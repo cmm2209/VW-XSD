@@ -1,0 +1,862 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+       
+    <xs:element name="radarFile">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="alternateIdentifiers" minOccurs="0"/>
+                <xs:element ref="relatedIdentifiers" minOccurs="0"/>
+                
+                <xs:element ref="creators" minOccurs="0"/>
+                <xs:element ref="contributors" minOccurs="0"/>
+                
+                <xs:element ref="title" minOccurs="1"/>
+                <xs:element ref="additionalTitles" minOccurs="0"/>
+                <xs:element ref="descriptions" minOccurs="0"/>
+                <xs:element ref="keywords" minOccurs="0"/>
+                
+                <xs:element ref="productionYear" minOccurs="0"/>
+                <xs:element ref="language" minOccurs="1"/>
+                <xs:element ref="subjectAreas" minOccurs="0"/>
+                
+                <xs:element ref="resource" minOccurs="0"/>
+                <xs:element ref="geoLocations" minOccurs="0"/>
+                <xs:element ref="dataSources" minOccurs="0"/>
+                <xs:element ref="software" minOccurs="0"/>
+                <xs:element ref="processing" minOccurs="0"/>
+                
+                <xs:element ref="relatedInformations" minOccurs="0"/>
+                
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element> 
+    
+    <xs:element name="alternateIdentifiers">
+        <xs:annotation>
+            <xs:documentation>An identifier or identifiers other than the primary Identifier applied
+                to the resource being registered.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="alternateIdentifier" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="alternateIdentifier">
+        <!-- dct:bibliographicCitation should be considered for substitutionGroup. -->
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute type="xs:string" name="alternateIdentifierType" use="required" />
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="relatedIdentifiers">
+        <xs:annotation>
+            <xs:documentation>Identifiers of related resources. These must be globally unique identifiers.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="relatedIdentifier" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="relatedIdentifier">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute type="relatedIdentifierType" name="relatedIdentifierType" use="required" />
+                    <xs:attribute type="relationType" name="relationType" use="required" />
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <!-- define possible values for related identifier type type element -->
+    <xs:simpleType name="relatedIdentifierType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="ARK"/>
+            <xs:enumeration value="arXiv"/>
+            <xs:enumeration value="bibcode"/>
+            <xs:enumeration value="CSTR"/>
+            <xs:enumeration value="DOI"/>
+            <xs:enumeration value="EAN13"/>
+            <xs:enumeration value="EISSN"/>
+            <xs:enumeration value="Handle"/>
+            <xs:enumeration value="ePIC"/>
+            <xs:enumeration value="IGSN"/>
+            <xs:enumeration value="ISBN"/>
+            <xs:enumeration value="ISSN"/>
+            <xs:enumeration value="ISTC"/>
+            <xs:enumeration value="LISSN"/>
+            <xs:enumeration value="LSID"/>
+            <xs:enumeration value="PMID"/>
+            <xs:enumeration value="PURL"/>
+            <xs:enumeration value="RRID"/>
+            <xs:enumeration value="UPC"/>
+            <xs:enumeration value="URL"/>
+            <xs:enumeration value="URN"/>
+            <xs:enumeration value="w3id"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <!-- define possible values for relation type type element -->
+    <xs:simpleType name="relationType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="IsCitedBy"/>
+            <xs:enumeration value="Cites"/>
+            <xs:enumeration value="IsSupplementTo"/>
+            <xs:enumeration value="IsSupplementedBy"/>
+            <xs:enumeration value="IsContinuedBy"/>
+            <xs:enumeration value="Continues"/>
+            <xs:enumeration value="Describes"/>
+            <xs:enumeration value="IsDescribedBy"/>
+            <xs:enumeration value="HasMetadata"/>
+            <xs:enumeration value="IsMetadataFor"/>
+            <xs:enumeration value="HasVersion"/>
+            <xs:enumeration value="IsVersionOf"/>
+            <xs:enumeration value="IsNewVersionOf"/>
+            <xs:enumeration value="IsPreviousVersionOf"/>
+            <xs:enumeration value="IsPartOf"/>
+            <xs:enumeration value="HasPart"/>
+            <xs:enumeration value="IsPublishedIn"/>
+            <xs:enumeration value="IsReferencedBy"/>
+            <xs:enumeration value="References"/>
+            <xs:enumeration value="IsDocumentedBy"/>
+            <xs:enumeration value="Documents"/>
+            <xs:enumeration value="IsCompiledBy"/>
+            <xs:enumeration value="Compiles"/>
+            <xs:enumeration value="IsVariantFormOf"/>
+            <xs:enumeration value="IsRecensionOf"/>
+            <xs:enumeration value="IsOriginalFormOf"/>
+            <xs:enumeration value="IsIdenticalTo"/>
+            <xs:enumeration value="Reviews"/>
+            <xs:enumeration value="IsDerivedFrom"/>
+            <xs:enumeration value="IsSourceOf"/>
+            <xs:enumeration value="Requires"/>
+            <xs:enumeration value="IsRequiredBy"/>
+            <xs:enumeration value="IsCollectedBy"/>
+            <xs:enumeration value="Collects"/>
+            <xs:enumeration value="HasTranslation"/>
+            <xs:enumeration value="IsTranslationOf"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="creators">
+        <xs:annotation>
+            <xs:documentation>The main researchers involved in producing the data, or the authors of the publication, in priority order.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="creator" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="creator">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element type="notNull" name="creatorName">
+                    <xs:annotation>
+                        <xs:documentation>Format: family name, given name.</xs:documentation>
+                    </xs:annotation>
+                </xs:element>
+                <xs:element type="notNull" name="givenName" minOccurs="0" maxOccurs="1" />
+                <xs:element type="notNull" name="familyName" minOccurs="0" maxOccurs="1" />
+                <xs:element ref="nameIdentifier" minOccurs="0" maxOccurs="unbounded" />
+                <xs:element ref="creatorAffiliation" minOccurs="0" maxOccurs="1" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:simpleType name="notNull">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+        <xs:element name="nameIdentifier">
+        <xs:annotation>
+            <xs:documentation>Uniquely identifies an individual or legal entity.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="notNull">
+                    <xs:attribute name="schemeURI" use="optional" type="notNull">
+                        <xs:annotation>
+                            <xs:documentation>The URI of the name identifier scheme. Example: http://www.orcid.org</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="nameIdentifierScheme" use="required" type="nameIdentifierScheme">
+                        <xs:annotation>
+                            <xs:documentation>Examples: ORCID, ROR</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:simpleType name="nameIdentifierScheme">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Other"/>
+            <xs:enumeration value="ORCID"/>
+            <xs:enumeration value="ROR"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="creatorAffiliation">
+        <xs:annotation>
+            <xs:documentation>The organizational or institutional affiliation of the creator.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="notNull">
+                    <xs:attribute name="schemeURI" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The URI of the affiliation identifier scheme. Example: https://ror.org/</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="affiliationIdentifierScheme" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>Example: ROR</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="affiliationIdentifier" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>Uniquely identifies the organizational affiliation of the creator. Example: https://ror.org/04aj4c181</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="contributors">
+        <xs:annotation>
+            <xs:documentation>The institution or person responsible for collecting, managing, distributing, or otherwise contributing to the development or creation of the resource.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="contributor" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="contributor">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element type="notNull" name="contributorName">
+                    <xs:annotation>
+                        <xs:documentation>Format: family name, given name</xs:documentation>
+                    </xs:annotation>
+                </xs:element>
+                <xs:element type="notNull" name="givenName" minOccurs="0" maxOccurs="1" />
+                <xs:element type="notNull" name="familyName" minOccurs="0" maxOccurs="1" />
+                <xs:element ref="nameIdentifier" minOccurs="0" maxOccurs="unbounded" />
+                <xs:element ref="contributorAffiliation" minOccurs="0" maxOccurs="1" />
+            </xs:sequence>
+            <xs:attribute type="contributorType" name="contributorType" use="required" />
+        </xs:complexType>
+    </xs:element>
+    
+    <!-- define possible values for contributor type element -->
+    <xs:simpleType name="contributorType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="ContactPerson"/>
+            <xs:enumeration value="DataCollector"/>
+            <xs:enumeration value="Editor"/>
+            <xs:enumeration value="HostingInstitution"/>
+            <xs:enumeration value="Producer"/>
+            <xs:enumeration value="ProjectLeader"/>
+            <xs:enumeration value="ProjectManager"/>
+            <xs:enumeration value="ProjectMember"/>
+            <xs:enumeration value="RegistrationAgency"/>
+            <xs:enumeration value="RelatedPerson"/>
+            <xs:enumeration value="Researcher"/>
+            <xs:enumeration value="ResearchGroup"/>
+            <xs:enumeration value="Sponsor"/>
+            <xs:enumeration value="Supervisor"/>
+            <xs:enumeration value="Translator"/>
+            <xs:enumeration value="Scribe"/>
+            <xs:enumeration value="Other"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    
+    <xs:element name="contributorAffiliation">
+        <xs:annotation>
+            <xs:documentation>The organizational or institutional affiliation of the contributor.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="notNull">
+                    <xs:attribute name="schemeURI" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The URI of the affiliation identifier scheme. Example: https://ror.org/</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="affiliationIdentifierScheme" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>Example: ROR</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="affiliationIdentifier" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>Uniquely identifies the organizational affiliation of the contributor. Example: https://ror.org/04aj4c181</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="title" type="notNull">
+        <xs:annotation>
+            <xs:documentation>A heading or caption by which a resource is well described.</xs:documentation>
+        </xs:annotation>
+    </xs:element>
+    
+    <xs:element name="additionalTitles">
+        <xs:annotation>
+            <xs:documentation>Complementary textual information to the main title of the resource.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="additionalTitle" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="additionalTitle">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute type="additionalTitleType" name="additionalTitleType" use="required" />
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <!-- define possible values for additional title type element -->
+    <xs:simpleType name="additionalTitleType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Subtitle"/>
+            <xs:enumeration value="TranslatedTitle"/>
+            <xs:enumeration value="AlternativeTitle"/>
+            <xs:enumeration value="Other"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="descriptions">
+        <xs:annotation>
+            <xs:documentation>A textual description containing additional information about resource (English is strongly recommended as primary language).</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="description" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="description">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute type="descriptionType" name="descriptionType" use="required">
+                    </xs:attribute>
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    
+    <!-- define possible values for description type type element -->
+    <xs:simpleType name="descriptionType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Abstract"/>
+            <xs:enumeration value="Object"/>
+            <xs:enumeration value="Method"/>
+            <xs:enumeration value="TableOfContents"/>
+            <xs:enumeration value="TechnicalInfo"/>
+            <xs:enumeration value="TechnicalRemarks"/>
+            <xs:enumeration value="Other"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    
+    <xs:element name="keywords">
+        <xs:annotation>
+            <xs:documentation>Keyword(s) describing the subject focus of the resource (English is
+                strongly recommended as primary language).
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="keyword" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="keyword">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="notNull">
+                    <xs:attribute name="keywordScheme" type="keywordScheme" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The name of the keyword scheme. Example: GND.</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="schemeURI" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The URI of the keyword scheme. Example: https://d-nb.info/gnd/</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="valueURI" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The URI of the keyword term.</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="classificationCode" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The classification code or identifier used for the keyword term.</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="ontologyURI" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The URI of the keyword ontology. Example: https://terminology.tib.eu/ts/ontologies/afo</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="ontologyId" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The identifier of the keyword ontology. Example: afo</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:simpleType name="keywordScheme">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Other"/>
+            <xs:enumeration value="GND"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="productionYear" type="yearOrUnknown">
+        <xs:annotation>
+            <xs:documentation>Year in which the resource was created or the resource refers to. (YYYY or YYYY-YYYY or "unknown").</xs:documentation>
+        </xs:annotation>
+    </xs:element>
+    
+    <xs:simpleType name="yearOrUnknown">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="\d{4}|\d{4}-\d{4}|unknown"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="language" type="language">
+        <xs:annotation>
+            <xs:documentation>Main language used or relevant to the resource.</xs:documentation>
+        </xs:annotation>
+    </xs:element>
+    
+    <xs:simpleType name="language">
+        <xs:annotation>
+            <xs:documentation>Select three letter codes from ISO 639-3.</xs:documentation>
+        </xs:annotation>
+        
+        <xs:restriction base="xs:string">   
+            <xs:enumeration value="ara"><xs:annotation><xs:documentation><title xml:lang="en">Arabic</title><title xml:lang="de">Arabisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="arg"><xs:annotation><xs:documentation><title xml:lang="en">Aragonese</title><title xml:lang="de">Aragonesisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="bre"><xs:annotation><xs:documentation><title xml:lang="en">Breton</title><title xml:lang="de">Bretonisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="bul"><xs:annotation><xs:documentation><title xml:lang="en">Bulgarian</title><title xml:lang="de">Bulgarisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="cat"><xs:annotation><xs:documentation><title xml:lang="en">Catalan; Valencian</title><title xml:lang="de">Katalanisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="ces"><xs:annotation><xs:documentation><title xml:lang="en">Czech</title><title xml:lang="de">Tschechisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="cor"><xs:annotation><xs:documentation><title xml:lang="en">Cornish</title><title xml:lang="de">Kornisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="cos"><xs:annotation><xs:documentation><title xml:lang="en">Corsican</title><title xml:lang="de">Korsisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="cym"><xs:annotation><xs:documentation><title xml:lang="en">Welsh</title><title xml:lang="de">Kymrisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="dan"><xs:annotation><xs:documentation><title xml:lang="en">Danish</title><title xml:lang="de">Dänisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="deu"><xs:annotation><xs:documentation><title xml:lang="en">German</title><title xml:lang="de">Deutsch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="eng"><xs:annotation><xs:documentation><title xml:lang="en">English</title><title xml:lang="de">Englisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="est"><xs:annotation><xs:documentation><title xml:lang="en">Estonian</title><title xml:lang="de">Estnisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="eus"><xs:annotation><xs:documentation><title xml:lang="en">Basque</title><title xml:lang="de">Baskisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="fao"><xs:annotation><xs:documentation><title xml:lang="en">Faroese</title><title xml:lang="de">Färöisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="fas"><xs:annotation><xs:documentation><title xml:lang="en">Persian</title><title xml:lang="de">Persisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="fin"><xs:annotation><xs:documentation><title xml:lang="en">Finnish</title><title xml:lang="de">Finnisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="fra"><xs:annotation><xs:documentation><title xml:lang="en">French</title><title xml:lang="de">Französisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="fry"><xs:annotation><xs:documentation><title xml:lang="en">Western Frisian</title><title xml:lang="de">Friesisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="gla"><xs:annotation><xs:documentation><title xml:lang="en">Gaelic; Scottish Gaelic</title><title xml:lang="de">Gälisch-Schottisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="gle"><xs:annotation><xs:documentation><title xml:lang="en">Irish</title><title xml:lang="de">Irisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="glg"><xs:annotation><xs:documentation><title xml:lang="en">Galician</title><title xml:lang="de">Galicisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="glv"><xs:annotation><xs:documentation><title xml:lang="en">Manx</title><title xml:lang="de">Manx</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="gmh"><xs:annotation><xs:documentation><title xml:lang="en">German, Middle High (ca.1050-1500)</title><title xml:lang="de">Mittelhochdeutsch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="goh"><xs:annotation><xs:documentation><title xml:lang="en">German, Old High (ca.750-1050)</title><title xml:lang="de">Althochdeutsch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="heb"><xs:annotation><xs:documentation><title xml:lang="en">Hebrew</title><title xml:lang="de">Hebräisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="hrv"><xs:annotation><xs:documentation><title xml:lang="en">Croatian</title><title xml:lang="de">Kroatisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="hun"><xs:annotation><xs:documentation><title xml:lang="en">Hungarian</title><title xml:lang="de">Ungarisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="isl"><xs:annotation><xs:documentation><title xml:lang="en">Icelandic</title><title xml:lang="de">Isländisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="ita"><xs:annotation><xs:documentation><title xml:lang="en">Italian</title><title xml:lang="de">Italienisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="lat"><xs:annotation><xs:documentation><title xml:lang="en">Latin</title><title xml:lang="de">Latein</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="lav"><xs:annotation><xs:documentation><title xml:lang="en">Latvian</title><title xml:lang="de">Lettisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="lim"><xs:annotation><xs:documentation><title xml:lang="en">Limburgan; Limburger; Limburgish</title><title xml:lang="de">Limburgisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="lit"><xs:annotation><xs:documentation><title xml:lang="en">Lithuanian</title><title xml:lang="de">Litauisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="ltz"><xs:annotation><xs:documentation><title xml:lang="en">Luxembourgish; Letzeburgesch</title><title xml:lang="de">Luxemburgisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="mkd"><xs:annotation><xs:documentation><title xml:lang="en">Macedonian</title><title xml:lang="de">Makedonisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="mlt"><xs:annotation><xs:documentation><title xml:lang="en">Maltese</title><title xml:lang="de">Maltesisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="nds"><xs:annotation><xs:documentation><title xml:lang="en">Low German; Low Saxon; German, Low; Saxon, Low</title><title xml:lang="de">Niederdeutsch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="nld"><xs:annotation><xs:documentation><title xml:lang="en">Dutch; Flemish</title><title xml:lang="de">Niederländisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="non"><xs:annotation><xs:documentation><title xml:lang="en">Norse, Old</title><title xml:lang="de">Altnorwegisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="nno"><xs:annotation><xs:documentation><title xml:lang="en">Norwegian Nynorsk; Nynorsk, Norwegian</title><title xml:lang="de">Nynorsk</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="nob"><xs:annotation><xs:documentation><title xml:lang="en">Bokmål, Norwegian; Norwegian Bokmål</title><title xml:lang="de">Bokmål</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="nor"><xs:annotation><xs:documentation><title xml:lang="en">Norwegian</title><title xml:lang="de">Norwegisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="oci"><xs:annotation><xs:documentation><title xml:lang="en">Occitan (post 1500)</title><title xml:lang="de">Okzitanisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="pol"><xs:annotation><xs:documentation><title xml:lang="en">Polish</title><title xml:lang="de">Polnisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="por"><xs:annotation><xs:documentation><title xml:lang="en">Portuguese</title><title xml:lang="de">Portugiesisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="roh"><xs:annotation><xs:documentation><title xml:lang="en">Romansh</title><title xml:lang="de">Rätoromanisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="ron"><xs:annotation><xs:documentation><title xml:lang="en">Romanian; Moldavian; Moldovan</title><title xml:lang="de">Rumänisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="slk"><xs:annotation><xs:documentation><title xml:lang="en">Slovak</title><title xml:lang="de">Slowakisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="slv"><xs:annotation><xs:documentation><title xml:lang="en">Slovenian</title><title xml:lang="de">Slowenisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="spa"><xs:annotation><xs:documentation><title xml:lang="en">Spanish; Castilian</title><title xml:lang="de">Spanisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="sqi"><xs:annotation><xs:documentation><title xml:lang="en">Albanian</title><title xml:lang="de">Albanisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="srd"><xs:annotation><xs:documentation><title xml:lang="en">Sardinian</title><title xml:lang="de">Sardisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="srp"><xs:annotation><xs:documentation><title xml:lang="en">Serbian</title><title xml:lang="de">Serbisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="swe"><xs:annotation><xs:documentation><title xml:lang="en">Swedish</title><title xml:lang="de">Schwedisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="ukr"><xs:annotation><xs:documentation><title xml:lang="en">Ukrainian</title><title xml:lang="de">Ukrainisch</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="und"><xs:annotation><xs:documentation><title xml:lang="en">Undetermined</title><title xml:lang="de">Nicht zu entscheiden</title></xs:documentation></xs:annotation></xs:enumeration>
+            <xs:enumeration value="yid"><xs:annotation><xs:documentation><title xml:lang="en">Yiddish</title><title xml:lang="de">Jiddisch</title></xs:documentation></xs:annotation></xs:enumeration>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="subjectAreas">
+        <xs:annotation>
+            <xs:documentation>RADAR specific list of scientific research areas. Please select appropriate field(s). Multiple selections are possible.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="subjectArea" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="subjectArea">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="controlledSubjectAreaName" type="subjectArea" minOccurs="1" maxOccurs="1"/>
+                <xs:element name="additionalSubjectAreaName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <!-- define possible values for subjectArea element -->
+    <xs:simpleType name="subjectArea">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Agriculture"/>
+            <xs:enumeration value="Architecture"/>
+            <xs:enumeration value="Arts and Media"/>
+            <xs:enumeration value="Astrophysics and Astronomy"/>
+            <xs:enumeration value="Biochemistry"/>
+            <xs:enumeration value="Biology"/>
+            <xs:enumeration value="Behavioural Sciences"/>
+            <xs:enumeration value="Chemistry"/>
+            <xs:enumeration value="Economics"/>
+            <xs:enumeration value="Environmental Science and Ecology"/>
+            <xs:enumeration value="Ethnology"/>
+            <xs:enumeration value="Geological Science"/>
+            <xs:enumeration value="Geography"/>
+            <xs:enumeration value="History"/>
+            <xs:enumeration value="Horticulture"/>
+            <xs:enumeration value="Linguistics"/>
+            <xs:enumeration value="Life Science"/>
+            <xs:enumeration value="Materials Science"/>
+            <xs:enumeration value="Mathematics"/>
+            <xs:enumeration value="Medicine"/>
+            <xs:enumeration value="Philosophy"/>
+            <xs:enumeration value="Physics"/>
+            <xs:enumeration value="Psychology"/>
+            <xs:enumeration value="Social Sciences"/>
+            <xs:enumeration value="Theology"/>
+            <xs:enumeration value="Veterinary Medicine"/>
+            <xs:enumeration value="Other"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="resource">
+        <xs:annotation>
+            <xs:documentation>General information on the resource's content.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute name="resourceType" use="required" type="resourceType">
+                        <xs:annotation>
+                            <xs:documentation>Specifies the type of the resource to be archived/published.</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    
+    <xs:simpleType name="resourceType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="CriticalEdition"/>
+            <xs:enumeration value="Manuscript"/>
+            <xs:enumeration value="Other"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    
+    <xs:element name="geoLocations">
+        <xs:annotation>
+            <xs:documentation>Spatial region or place where the resource was originated or which the
+                resource refers to.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="geoLocation" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="geoLocation">
+        <!-- dct:spatial might be considered for substitutionGroup -->
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="geoLocationCountry" minOccurs="0" />
+                <xs:element ref="geoLocationRegion" minOccurs="0" />
+                <xs:choice minOccurs="0" maxOccurs="1">
+                    <xs:element ref="geoLocationPoint" />
+                    <xs:element ref="geoLocationBox" />
+                </xs:choice>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="geoLocationCountry" type="ISO3166-Country-Name" />
+    <xs:element name="geoLocationRegion" type="xs:string" />
+    <xs:element name="geoLocationPoint" type="geoPoint" />
+    
+    <xs:complexType name="geoPoint">
+        <xs:all>
+            <xs:element name="latitude">
+                <xs:simpleType>
+                    <xs:restriction base="xs:double">
+                        <xs:maxInclusive value="90" />
+                        <xs:minInclusive value="-90" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+            <xs:element name="longitude">
+                <xs:simpleType>
+                    <xs:restriction base="xs:double">
+                        <xs:maxInclusive value="180" />
+                        <xs:minInclusive value="-180" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+        </xs:all>
+    </xs:complexType>
+    
+    <xs:simpleType name="ISO3166-Country-Name">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="ÅLAND ISLANDS"/>
+            <xs:enumeration value="ALBANIA"/>
+            <xs:enumeration value="ALGERIA"/>
+            <xs:enumeration value="ANDORRA"/>
+            <xs:enumeration value="ARMENIA"/>
+            <xs:enumeration value="AUSTRIA"/>
+            <xs:enumeration value="BELARUS"/>
+            <xs:enumeration value="BELGIUM"/>
+            <xs:enumeration value="BOSNIA AND HERZEGOWINA"/>
+            <xs:enumeration value="BULGARIA"/>
+            <xs:enumeration value="CANADA"/>
+            <xs:enumeration value="CROATIA (local name Hrvatska)"/>
+            <xs:enumeration value="CYPRUS"/>
+            <xs:enumeration value="CZECH REPUBLIC"/>
+            <xs:enumeration value="DENMARK"/>
+            <xs:enumeration value="ESTONIA"/>
+            <xs:enumeration value="FAROE ISLANDS"/>
+            <xs:enumeration value="FINLAND"/>
+            <xs:enumeration value="FRANCE"/>
+            <xs:enumeration value="GEORGIA"/>
+            <xs:enumeration value="GERMANY"/>
+            <xs:enumeration value="GREECE"/>
+            <xs:enumeration value="HOLY SEE"/>
+            <xs:enumeration value="HUNGARY"/>
+            <xs:enumeration value="ICELAND"/>
+            <xs:enumeration value="IRELAND"/>
+            <xs:enumeration value="ISLE OF MAN"/>
+            <xs:enumeration value="ISRAEL"/>
+            <xs:enumeration value="ITALY"/>
+            <xs:enumeration value="LATVIA"/>
+            <xs:enumeration value="LIECHTENSTEIN"/>
+            <xs:enumeration value="LITHUANIA"/>
+            <xs:enumeration value="LUXEMBOURG"/>
+            <xs:enumeration value="MACEDONIA, THE FORMER YUGOSLAV REPUBLIC OF"/>
+            <xs:enumeration value="MALTA"/>
+            <xs:enumeration value="MOLDOVA, REPUBLIC OF"/>
+            <xs:enumeration value="MONACO"/>
+            <xs:enumeration value="MONTENEGRO"/>
+            <xs:enumeration value="NETHERLANDS"/>
+            <xs:enumeration value="NORWAY"/>
+            <xs:enumeration value="POLAND"/>
+            <xs:enumeration value="PORTUGAL"/>
+            <xs:enumeration value="ROMANIA"/>
+            <xs:enumeration value="RUSSIAN FEDERATION"/>
+            <xs:enumeration value="SAN MARINO"/>
+            <xs:enumeration value="SERBIA"/>
+            <xs:enumeration value="SLOVAKIA"/>
+            <xs:enumeration value="SLOVENIA"/>
+            <xs:enumeration value="SPAIN"/>
+            <xs:enumeration value="SWEDEN"/>
+            <xs:enumeration value="SWITZERLAND"/>
+            <xs:enumeration value="TURKEY"/>
+            <xs:enumeration value="UKRAINE"/>
+            <xs:enumeration value="UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND*"/>
+            <xs:enumeration value="UNITED STATES OF AMERICA"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="geoLocationBox">
+        <xs:complexType>
+            <xs:all>
+                <xs:element name="southWestPoint" type="geoPoint" />
+                <xs:element name="northEastPoint" type="geoPoint" />
+            </xs:all>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="dataSources">
+        <xs:annotation>
+            <xs:documentation>Specifies the origin of the data contained in the
+                resource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="dataSource" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="dataSource">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute type="dataSourceDetail" name="dataSourceDetail" use="required">
+                        <xs:annotation>
+                            <xs:documentation>Specifies the type of data source.</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <!-- define possible values for data source detail element -->
+    <xs:simpleType name="dataSourceDetail">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Media"/>
+            <xs:enumeration value="Observation"/>
+            <xs:enumeration value="Survey"/>
+            <xs:enumeration value="Other"/>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:element name="software">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="softwareType" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="softwareType">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="softwareName" maxOccurs="unbounded" />
+                <xs:element ref="alternativeSoftwareName" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+            <xs:attribute name="type" use="required" type="softwareType" />
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:simpleType name="softwareType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Resource Production"></xs:enumeration>
+            <xs:enumeration value="Resource Processing"></xs:enumeration>
+            <xs:enumeration value="Resource Viewing"></xs:enumeration>
+            <xs:enumeration value="Other"></xs:enumeration>
+        </xs:restriction>
+    </xs:simpleType>
+    
+    
+    <xs:element name="softwareName">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute type="xs:string" name="softwareVersion" use="required" />
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="alternativeSoftwareName">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute type="xs:string" name="alternativeSoftwareVersion" />
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="processing">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="dataProcessing" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="dataProcessing" type="xs:string">
+        <xs:annotation>
+            <xs:documentation>Specifies the data processing instructions, used for creating the data
+                in the digital resource.
+            </xs:documentation>
+        </xs:annotation>
+    </xs:element>
+    
+    <xs:element name="relatedInformations">
+        <xs:annotation>
+            <xs:documentation>Specifies the database type of related information relevant
+                information on the sample used to produce the digital data in the
+                resource.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="relatedInformation" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="relatedInformation">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="xs:string">
+                    <xs:attribute type="xs:string" name="relatedInformationType" />
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+</xs:schema>
