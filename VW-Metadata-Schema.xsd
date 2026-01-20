@@ -162,12 +162,12 @@
             <xs:sequence>
                 <xs:element type="notNull" name="creatorName">
                     <xs:annotation>
-                        <xs:documentation>Format: surname, forename (optional: linking element)</xs:documentation>
+                        <xs:documentation>Format: forename, optional linking element, surname</xs:documentation>
                     </xs:annotation>
                 </xs:element>
-                <xs:element type="notNull" name="forename" minOccurs="0" maxOccurs="1" />
+                <xs:element type="notNull" name="foreName" minOccurs="0" maxOccurs="1" />
                 <xs:element type="notNull" name="nameLink" minOccurs="0" maxOccurs="2" />
-                <xs:element type="notNull" name="surname" minOccurs="0" maxOccurs="2" />
+                <xs:element type="notNull" name="surName" minOccurs="0" maxOccurs="2" />
                 <xs:element ref="nameIdentifier" minOccurs="0" maxOccurs="unbounded" />
                 <xs:element ref="creatorAffiliation" minOccurs="0" maxOccurs="1" />
             </xs:sequence>
@@ -254,7 +254,7 @@
             <xs:sequence>
                 <xs:element type="notNull" name="contributorName">
                     <xs:annotation>
-                        <xs:documentation>Format: surname, forename (optional: linking element)</xs:documentation>
+                        <xs:documentation>Format: forename, optional linking element, surname</xs:documentation>
                     </xs:annotation>
                 </xs:element>
                 <xs:element type="notNull" name="foreName" minOccurs="0" maxOccurs="1" />
