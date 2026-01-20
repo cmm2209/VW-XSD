@@ -194,7 +194,7 @@
                     </xs:attribute>
                     <xs:attribute name="nameIdentifierScheme" use="required" type="nameIdentifierScheme">
                         <xs:annotation>
-                            <xs:documentation>Examples: ORCID, ROR</xs:documentation>
+                            <xs:documentation>Examples: GND, ORCID, ROR</xs:documentation>
                         </xs:annotation>
                     </xs:attribute>
                 </xs:extension>
@@ -207,6 +207,7 @@
             <xs:enumeration value="Other"/>
             <xs:enumeration value="ORCID"/>
             <xs:enumeration value="ROR"/>
+            <xs:enumeration value="GND"/>
         </xs:restriction>
     </xs:simpleType>
     
