@@ -578,20 +578,20 @@
                         <xs:element name="institution" type="xs:string" />                    
                         <xs:element name="repository" type="xs:string" />    
                         <xs:element name="idno" type="xs:string" />     
-                        <xs:element name="citedRange" type="xs:string" /> 
-                        <xs:element name="altIdentifier" type="xs:string" />
-                        <xs:element name="msName" type="xs:string" /> 
-                        <xs:element name="ptr" type="notNull" /> 
+                        <xs:element name="citedRange" type="xs:string" minOccurs="0"/> 
+                        <xs:element name="altIdentifier" type="xs:string"  minOccurs="0"/>
+                        <xs:element name="msName" type="xs:string"  minOccurs="0"/> 
+                        <xs:element name="ptr" type="notNull"  minOccurs="0"/> 
                     </xs:sequence>
                     <xs:sequence> 
                         <xs:element name="editor" type="xs:string" />
-                        <xs:element name="author" type="xs:string" />     
+                        <xs:element name="author" type="xs:string"  minOccurs="0"/>     
                         <xs:element name="title" type="xs:string" />   
                         <xs:element name="pubPlace" type="xs:string" />
                         <xs:element name="publisher" type="xs:string" />
                         <xs:element name="date" type="yearOrUnknown" />  
-                        <xs:element name="citedRange" type="xs:string" />     
-                        <xs:element name="ptr" type="notNull" />                                                                                                                                   
+                        <xs:element name="citedRange" type="xs:string"  minOccurs="0"/>     
+                        <xs:element name="ptr" type="notNull"  minOccurs="0"/>                                                                                                                                   
                     </xs:sequence>                                                       
                 </xs:choice>
             </xs:sequence>
