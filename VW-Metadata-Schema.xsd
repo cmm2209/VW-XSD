@@ -100,6 +100,7 @@
     <!-- define possible values for relation type type element -->
     <xs:simpleType name="relationType">
         <xs:restriction base="xs:string">
+            <xs:enumeration value="IsEditionOf"/>
             <xs:enumeration value="IsCopyOf"/>
             <xs:enumeration value="IsRecensionOf"/>
             <xs:enumeration value="IsOriginalFormOf"/>
