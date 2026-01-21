@@ -584,8 +584,8 @@
                         <xs:element name="ptr" type="notNull"  minOccurs="0"/> 
                     </xs:sequence>
                     <xs:sequence> 
-                        <xs:element name="editor" type="xs:string" />
-                        <xs:element name="author" type="xs:string"  minOccurs="0"/>     
+                        <xs:element name="author" type="xs:string"  minOccurs="0"/>
+                        <xs:element name="editor" type="xs:string" />    
                         <xs:element name="title" type="xs:string" />   
                         <xs:element name="pubPlace" type="xs:string" />
                         <xs:element name="publisher" type="xs:string" />
