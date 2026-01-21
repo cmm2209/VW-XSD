@@ -70,6 +70,11 @@
             <xs:simpleContent>
                 <xs:extension base="xs:string">
                     <xs:attribute type="relatedIdentifierType" name="relatedIdentifierType" use="required" />
+                    <xs:attribute name="schemeURI" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>The URI of the affiliation identifier scheme. Example: https://ror.org/</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
                     <xs:attribute type="relationType" name="relationType" use="required" />
                 </xs:extension>
             </xs:simpleContent>
