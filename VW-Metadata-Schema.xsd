@@ -577,9 +577,31 @@
                     </xs:attribute>
                 </xs:extension>
             </xs:simpleContent>
+             <xs:complexType name="resourceDescriptor" use="required" type="resourceDescriptor">
+                <xs:annotation>
+                    <xs:documentation>Specifies the original publication details or holding information of the resource to be archived/published.</xs:documentation>
+                </xs:annotation>
+                <xs:sequence>
+                    <xs:sequence name="MSDescriptor">
+                        <xs:element name="settlement" type="xs:string" />
+                        <xs:element name="institution" type="xs:string" />                    
+                        <xs:element name="repository" type="xs:string" />    
+                        <xs:element name="idno" type="xs:string" />     
+                        <xs:element name="altIdentifier" type="xs:string" />
+                        <xs:element name="msName" type="xs:string" />  
+                    </xs:sequence>
+                    <xs:sequence name="editionDescriptor"> 
+                        <xs:element name="editor" type="xs:string" />
+                        <xs:element name="author" type="xs:string" />     
+                        <xs:element name="title" type="xs:string" />   
+                        <xs:element name="pubPlace" type="xs:string" />
+                        <xs:element name="publisher" type="xs:string" />
+                        <xs:element name="date" type="yearOrUnknown" />                                                                                                                
+                    </xs:sequence>                                                       
+                </xs:sequence>
+            </xs:complexType>
         </xs:complexType>
     </xs:element>
-    
     
     <xs:simpleType name="resourceType">
         <xs:restriction base="xs:string">
@@ -588,6 +610,27 @@
             <xs:enumeration value="Other"/>
         </xs:restriction>
     </xs:simpleType>
+
+    <xs:complexType name="resourceDescriptor">
+        <xs:all>
+            <xs:element name="latitude">
+                <xs:simpleType>
+                    <xs:restriction base="xs:double">
+                        <xs:maxInclusive value="90" />
+                        <xs:minInclusive value="-90" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+            <xs:element name="longitude">
+                <xs:simpleType>
+                    <xs:restriction base="xs:double">
+                        <xs:maxInclusive value="180" />
+                        <xs:minInclusive value="-180" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+        </xs:all>
+    </xs:complexType>
     
     
     <xs:element name="geoLocations">
