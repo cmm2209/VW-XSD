@@ -25,6 +25,7 @@
                 <xs:element ref="processing" minOccurs="0"/>
                 
                 <xs:element ref="relatedInformations" minOccurs="0"/>
+                <xs:element ref="fundingReferences" minOccurs="0"/>
                 
             </xs:sequence>
         </xs:complexType>
@@ -858,4 +859,49 @@
         </xs:complexType>
     </xs:element>
     
+    <xs:element name="fundingReferences">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="fundingReference" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="fundingReference">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element type="notNull" name="funderName" minOccurs="1" maxOccurs="1"/>
+                <xs:element ref="funderIdentifier" minOccurs="0" maxOccurs="1"/>
+                <xs:element type="notNull" name="awardNumber" minOccurs="0" maxOccurs="1"/>
+                <xs:element type="notNull" name="awardURI" minOccurs="0" maxOccurs="1"/>
+                <xs:element type="notNull" name="awardTitle" minOccurs="0" maxOccurs="1"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="funderIdentifier">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="notNull">
+                    <xs:attribute type="funderIdentifierType" name="type"/>
+                    <xs:attribute name="schemeURI" type="notNull" use="optional">
+                        <xs:annotation>
+                            <xs:documentation>
+                                The URI of the funder identifier scheme. Example: https://ror.org/
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:simpleType name="funderIdentifierType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="CrossRefFunder"/>
+            <xs:enumeration value="GRID"/>
+            <xs:enumeration value="ISNI"/>
+            <xs:enumeration value="ROR"/>
+            <xs:enumeration value="Other"/>
+        </xs:restriction>
+    </xs:simpleType>
 </xs:schema>
