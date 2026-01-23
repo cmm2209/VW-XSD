@@ -30,6 +30,16 @@
                                 <xsl:attribute name="ref"><xsl:value-of select="radarFile/relatedIdentifiers/relatedIdentifier/@schemeURI"/><xsl:value-of select="radarFile/relatedIdentifiers/relatedIdentifier"/></xsl:attribute>
                                 <xsl:value-of select="radarFile/title"/>
                             </title>
+                            
+                            <xsl:for-each select="radarFile/additionalTitles">
+                                <xsl:if test="additionalTitle != ''">
+                                    <title>
+                                       <xsl:attribute name="type"><xsl:value-of select="additionalTitle/@additionalTitleType"/></xsl:attribute>
+                                       <xsl:value-of select="additionalTitle"/>
+                                    </title>
+                                </xsl:if>
+                            </xsl:for-each>
+                            
                             <author>
                                 <xsl:attribute name="ref"><xsl:value-of select="radarFile/creators/creator/nameIdentifier/@schemeURI"/><xsl:value-of select="radarFile/creators/creator/nameIdentifier"/></xsl:attribute>
                                 <xsl:value-of select="radarFile/creators/creator/creatorName"/>
@@ -70,84 +80,72 @@
                         <publicationStmt>
                             <p>To be determined.</p>
                         </publicationStmt>
+                        
+                        <xsl:for-each select="radarFile/descriptions">
+                            <xsl:if test="description != ''">
+                                <notesStmt>
+                                    <note>
+                                        <xsl:attribute name="type"><xsl:value-of select="description/@descriptionType"/></xsl:attribute>
+                                        <xsl:value-of select="description"/>
+                                    </note>
+                                </notesStmt>
+                            </xsl:if>
+                        </xsl:for-each>
+                        
                         <sourceDesc>
-                            <biblStruct>
-                                <monogr>
-                                    <editor>Foner, Philip S.</editor>
-                                    <title>The collected writings of Thomas Paine</title>
-                                    <imprint>
-                                        <pubPlace>New York</pubPlace>
-                                        <publisher>Citadel Press</publisher>
-                                        <date>1945</date>
-                                    </imprint>
-                                </monogr>
-                            </biblStruct>
-                        </sourceDesc>
+                            <xsl:for-each select="radarFile/resource">
+                                <xsl:choose>
+                                    <xsl:when test="@resourceType='Manuscript'">
+                                       <msDesc>
+                                           <msIdentifier>
+                                               <settlement><xsl:value-of select="settlement"/></settlement>
+                                               <institution><xsl:value-of select="institution"/></institution>
+                                               <repository><xsl:value-of select="repository"/></repository>
+                                               <idno><xsl:value-of select="idno"/></idno>
+                                               <citedRange><xsl:value-of select="citedRange"/></citedRange>
+                                               <ptr><xsl:value-of select="ptr"/></ptr>
+                                           </msIdentifier>
+                                       </msDesc> 
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <bibl>
+                                            <author><xsl:value-of select="author"/></author>
+                                            <title><xsl:value-of select="title"/></title>
+                                            <editor><xsl:value-of select="editor"/></editor>
+                                            <edition><xsl:value-of select="edition"/></edition>
+                                            <pubPlace><xsl:value-of select="pubPlace"/></pubPlace>
+                                            <publisher><xsl:value-of select="publisher"/></publisher>
+                                            <date><xsl:value-of select="date"/></date>
+                                            <ptr><xsl:value-of select="ptr"/></ptr>    
+                                        </bibl>
+                                    </xsl:otherwise>
+                                </xsl:choose>
+                            </xsl:for-each>
+                        </sourceDesc>                         
                     </fileDesc>
+                    
                     <encodingDesc>
-                        <samplingDecl>
-                            <p>Editorial notes in the Foner edition have not
-                                been reproduced. </p>
-                            <p>Blank lines and multiple blank spaces, including paragraph
-                                indents, have not been preserved. </p>
-                        </samplingDecl>
-                        <editorialDecl>
-                            <correction status="high"
-                                method="silent">
-                                <p>The following errors
-                                    in the Foner edition have been corrected:
-                                    <list>
-                                        <item>p. 13 l. 7 cotemporaries contemporaries</item>
-                                        <item>p. 28 l. 26 [comma] [period]</item>
-                                        <item>p. 84 l. 4 kin kind</item>
-                                        <item>p. 95 l. 1 stuggle struggle</item>
-                                        <item>p. 101 l. 4 certainy certainty</item>
-                                        <item>p. 167 l. 6 than that</item>
-                                        <item>p. 209 l. 24 publshed published</item>
-                                    </list>
-                                </p>
-                            </correction>
-                            <normalization>
-                                <p>No normalization beyond that performed
-                                    by Foner, if any. </p>
-                            </normalization>
-                            <quotation marks="all">
-                                <p>All double quotation marks
-                                    rendered with ", all single quotation marks with
-                                    apostrophe. </p>
-                            </quotation>
-                            <hyphenation eol="none">
-                                <p>Hyphenated words that appear at the
-                                    end of the line in the Foner edition have been reformed.</p>
-                            </hyphenation>
-                            <stdVals>
-                                <p>The values of <att>when-iso</att> on the <gi>time</gi>
-                                    element always end in the format <val>HH:MM</val> or
-                                    <val>HH</val>; i.e., seconds, fractions thereof, and time
-                                    zone designators are not present.</p>
-                            </stdVals>
-                            <interpretation>
-                                <p>Compound proper names are marked. </p>
-                                <p>Dates are marked. </p>
-                                <p>Italics are recorded without interpretation. </p>
-                            </interpretation>
-                        </editorialDecl>
-                        <classDecl>
-                            <taxonomy xml:id="lcsh">
-                                <bibl>Library of Congress Subject Headings</bibl>
-                            </taxonomy>
-                            <taxonomy xml:id="lc">
-                                <bibl>Library of Congress Classification</bibl>
-                            </taxonomy>
-                        </classDecl>
+                        <projectDesc>
+                            <p><xsl:value-of select="radarFile/processing/dataProcessing"/></p>
+                            <p>Text processed using <xsl:value-of select="radarFile/software/softwareType/softwareName"/>.</p>
+                        </projectDesc>
                     </encodingDesc>
                     <profileDesc>
                         <creation>
-                            <date>1774</date>
+                            <date><xsl:value-of select="radarFile/productionYear"/></date>
                         </creation>
-                        <langUsage>
-                            <language ident="en" usage="100">English.</language>
-                        </langUsage>
+                        <xsl:for-each select="radarFile">
+                            <xsl:if test="language='gmh'">
+                                <langUsage>
+                                    <language ident="gmh">Mittelhochdeutsch</language>
+                                </langUsage>
+                            </xsl:if>
+                            <xsl:if test="language='lat'">
+                                <langUsage>
+                                    <language ident="lat">Latin</language>
+                                </langUsage>                                
+                            </xsl:if>
+                        </xsl:for-each>
                         <textClass>
                             <keywords scheme="#lcsh">
                                 <term>Political science</term>
