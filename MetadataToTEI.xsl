@@ -69,7 +69,8 @@
                             <xsl:if test="@resourceType='CriticalEdition'">
                                 <editionStmt>
                                     <edition>
-                                        <p><xsl:value-of select="edition"/></p>
+                                        <xsl:value-of select="edition"/>
+                                        
                                         <date>
                                             <xsl:value-of select="date"/>
                                         </date>
@@ -98,25 +99,55 @@
                                     <xsl:when test="@resourceType='Manuscript'">
                                        <msDesc>
                                            <msIdentifier>
-                                               <settlement><xsl:value-of select="settlement"/></settlement>
-                                               <institution><xsl:value-of select="institution"/></institution>
-                                               <repository><xsl:value-of select="repository"/></repository>
-                                               <idno><xsl:value-of select="idno"/></idno>
-                                               <citedRange><xsl:value-of select="citedRange"/></citedRange>
-                                               <ptr><xsl:value-of select="ptr"/></ptr>
-                                           </msIdentifier>
+                                               <settlement>
+                                                   <xsl:value-of select="settlement"/>
+                                               </settlement>
+                                               <institution>
+                                                   <xsl:value-of select="institution"/>
+                                               </institution>
+                                               <repository>
+                                                   <xsl:value-of select="repository"/>
+                                               </repository>
+                                               <idno>
+                                                   <xsl:value-of select="idno"/>
+                                               </idno>
+                                           </msIdentifier>                                             
                                        </msDesc> 
+                                        <bibl>
+                                            <citedRange>
+                                                <xsl:value-of select="citedRange"/>
+                                            </citedRange>    
+                                            <ptr>
+                                                <xsl:attribute name="target"><xsl:value-of select="ptr"/></xsl:attribute>
+                                            </ptr>
+                                        </bibl>
                                     </xsl:when>
                                     <xsl:otherwise>
                                         <bibl>
-                                            <author><xsl:value-of select="author"/></author>
-                                            <title><xsl:value-of select="title"/></title>
-                                            <editor><xsl:value-of select="editor"/></editor>
-                                            <edition><xsl:value-of select="edition"/></edition>
-                                            <pubPlace><xsl:value-of select="pubPlace"/></pubPlace>
-                                            <publisher><xsl:value-of select="publisher"/></publisher>
-                                            <date><xsl:value-of select="date"/></date>
-                                            <ptr><xsl:value-of select="ptr"/></ptr>    
+                                            <author>
+                                                <xsl:value-of select="author"/>
+                                            </author>
+                                            <title>
+                                                <xsl:value-of select="title"/>
+                                            </title>
+                                            <editor>
+                                                <xsl:value-of select="editor"/>
+                                            </editor>
+                                            <edition>
+                                                <xsl:value-of select="edition"/>
+                                            </edition>
+                                            <pubPlace>
+                                                <xsl:value-of select="pubPlace"/>
+                                            </pubPlace>
+                                            <publisher>
+                                                <xsl:value-of select="publisher"/>
+                                            </publisher>
+                                            <date>
+                                                <xsl:value-of select="date"/>
+                                            </date>
+                                            <ptr>
+                                                <xsl:attribute name="target"><xsl:value-of select="ptr"/></xsl:attribute>
+                                            </ptr>    
                                         </bibl>
                                     </xsl:otherwise>
                                 </xsl:choose>
