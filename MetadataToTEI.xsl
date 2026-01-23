@@ -134,33 +134,43 @@
                         <creation>
                             <date><xsl:value-of select="radarFile/productionYear"/></date>
                         </creation>
-                        <xsl:for-each select="radarFile">
-                            <xsl:if test="language='gmh'">
-                                <langUsage>
+                        <xsl:for-each select="radarFile/languages">
+                            <xsl:choose>
+                                <xsl:when test="language='gmh'">
+                                    <langUsage>
                                     <language ident="gmh">Mittelhochdeutsch</language>
                                 </langUsage>
-                            </xsl:if>
-                            <xsl:if test="language='lat'">
-                                <langUsage>
-                                    <language ident="lat">Latin</language>
-                                </langUsage>                                
-                            </xsl:if>
+                                </xsl:when>
+                                <xsl:when test="language='lat'">
+                                    <langUsage>
+                                        <language ident="lat">Latin</language>
+                                    </langUsage>   
+                                </xsl:when>
+                                <xsl:otherwise>
+                                    <langUsage>
+                                        <language ident="lat">
+                                            <xsl:attribute name="ident"><xsl:value-of select="language"/></xsl:attribute>
+                                            <xsl:value-of select="language"/>
+                                        </language>
+                                    </langUsage>
+                                </xsl:otherwise>
+                            </xsl:choose>
                         </xsl:for-each>
                         <textClass>
-                            <keywords scheme="#lcsh">
-                                <term>Political science</term>
-                                <term>United States — Politics and government —
-                                    Revolution, 1775-1783</term>
-                            </keywords>
-                            <classCode scheme="#lc">JC 177</classCode>
-                        </textClass>
+                            <xsl:for-each select="radarFile/keywords/keyword">
+                                <keywords>
+                                    <xsl:for-each select=".">
+                                        <xsl:choose>
+                                            <xsl:when test="@keywordScheme='Other'"></xsl:when>
+                                            <xsl:otherwise>
+                                                <xsl:attribute name="scheme"><xsl:value-of select="@schemeURI"/><xsl:value-of select="@classificationCode"/></xsl:attribute></xsl:otherwise>
+                                        </xsl:choose>
+                                    </xsl:for-each>
+                                    <term><xsl:value-of select="."/></term>
+                                </keywords>
+                            </xsl:for-each>    
+                        </textClass>  
                     </profileDesc>
-                    <revisionDesc>
-                        <change when="1996-01-22" who="#MSM"> finished proofreading </change>
-                        <change when="1995-10-30" who="#LB"> finished proofreading </change>
-                        <change notBefore="1995-07-04" who="#RG"> finished data entry at end of term </change>
-                        <change notAfter="1995-01-01" who="#RG"> began data entry before New Year 1995 </change>
-                    </revisionDesc>
                </teiHeader>
                 <text>
                     <body>
