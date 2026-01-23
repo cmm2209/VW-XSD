@@ -11,6 +11,8 @@
                 <fileDesc>
                     <titleStmt>
                         <title>The Text Corpus of the Scientific Discourse in Medieval Vernacular Texts Project</title>
+                        <principal>Prof. Dr. Racha Kirakosian</principal>
+                        <funder>VolkswagenStiftung</funder>
                     </titleStmt>
                     <publicationStmt>
                         <p>To be determined.</p>
@@ -24,31 +26,50 @@
                 <teiHeader>
                     <fileDesc>
                         <titleStmt>
-                            <title ref="{radarFile/relatedIdentifiers/relatedIdentifiers/@schemeURI}/{radarFile/relatedIdentifiers/relatedIdentifiers}">
+                            <title>
+                                <xsl:attribute name="ref"><xsl:value-of select="radarFile/relatedIdentifiers/relatedIdentifier/@schemeURI"/><xsl:value-of select="radarFile/relatedIdentifiers/relatedIdentifier"/></xsl:attribute>
                                 <xsl:value-of select="radarFile/title"/>
                             </title>
-                            <author><xsl:value-of select="radarFile/creators/creator" disable-output-escaping="yes"/></author>
-                            <respStmt>
-                                <xsl:for-each select="radarFile/contributors/contributor">
-                                    <resp><xsl:value-of select="radarFile/contributors/contributor/@contributorType"/>:</resp>
-                                    <name><xsl:value-of select="radarFile/contributors/contributor/contributorName"/></name>
-                                </xsl:for-each> 
-                            </respStmt>
-                        </titleStmt>
-                        <xsl:if test="radarFile/resource/@resourcetype = CriticalEdition">
-                            <editionStmt>
-                                <edition>
-                                    <p><xsl:value-of select="radarFile/resource/edition"/></p>
-                                    <date><xsl:value-of select="radarFile/resource/date"/></date>
-                                </edition>
-                            </editionStmt>
-                        </xsl:if>
+                            <author>
+                                <xsl:attribute name="ref"><xsl:value-of select="radarFile/creators/creator/nameIdentifier/@schemeURI"/><xsl:value-of select="radarFile/creators/creator/nameIdentifier"/></xsl:attribute>
+                                <xsl:value-of select="radarFile/creators/creator/creatorName"/>
+                            </author>
+                            
+                        <xsl:for-each select="radarFile/contributors/contributor">
+                            <xsl:if test="@contributorType='Editor'">
+                                <editor>
+                                    <xsl:attribute name="ref"><xsl:value-of select="nameIdentifier/@schemeURI"/><xsl:value-of select="nameIdentifier"/></xsl:attribute>
+                                    <xsl:value-of select="contributorName"/>
+                                </editor>
+                            </xsl:if>
+                        </xsl:for-each>
+                    
+                        <xsl:for-each select="radarFile/contributors/contributor">
+                            <xsl:if test="@contributorType='DataCollector'">
+                                <respStmt>
+                                    <resp>Data collected by</resp>
+                                    <name>
+                                        <xsl:attribute name="ref"><xsl:value-of select="nameIdentifier/@schemeURI"/><xsl:value-of select="nameIdentifier"/></xsl:attribute>
+                                        <xsl:value-of select="contributorName"/></name>
+                                </respStmt>     
+                            </xsl:if>
+                        </xsl:for-each> 
+                      </titleStmt>
+                        <xsl:for-each select="radarFile/resource">
+                            <xsl:if test="@resourceType='CriticalEdition'">
+                                <editionStmt>
+                                    <edition>
+                                        <p><xsl:value-of select="edition"/></p>
+                                        <date>
+                                            <xsl:value-of select="date"/>
+                                        </date>
+                                    </edition>
+                                </editionStmt>
+                            </xsl:if>
+                        </xsl:for-each>
                         <publicationStmt>
                             <p>To be determined.</p>
                         </publicationStmt>
-                        <notesStmt>
-                            <note>Funding provided by the VolkswagenStiftung.</note>
-                        </notesStmt>
                         <sourceDesc>
                             <biblStruct>
                                 <monogr>
