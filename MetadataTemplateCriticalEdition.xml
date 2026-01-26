@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<radarFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="https://cmm2209.github.io/VW-XSD/VW-Metadata-Schema.xsd">
+    <alternateIdentifiers>
+        <alternateIdentifier alternateIdentifierType="Type of alternative identifier, e.g. internal identifier">Identifier other than RADAR's persistent identifier,
+            e.g. institute-specific identifier used to identify the data.</alternateIdentifier>
+    </alternateIdentifiers>
+    <relatedIdentifiers>
+        <relatedIdentifier relationType="IsEditionOf" relatedIdentifierType="GND" schemeURI="https://d-nb.info/gnd/">4108542-5</relatedIdentifier>
+    </relatedIdentifiers>
+    <creators>
+        <creator>
+            <creatorName>Wolfram von Eschenbach</creatorName>
+            <foreName>Wolfram</foreName>
+            <nameLink>von</nameLink>
+            <surName>Eschenbach</surName>
+            <nameIdentifier schemeURI="https://explore.gnd.network/gnd/" nameIdentifierScheme="GND">118634933</nameIdentifier>
+        </creator>
+    </creators>
+    <contributors>
+        <contributor contributorType="Editor">
+            <contributorName>Leitzmann, Albert</contributorName>
+            <foreName>Albert</foreName>
+            <surName>Leitzmann</surName>
+            <nameIdentifier schemeURI="https://explore.gnd.network/gnd/" nameIdentifierScheme="GND">116890657</nameIdentifier>
+        </contributor>
+        <contributor contributorType="ProjectLeader">
+          <contributorName>Kirakosian, Racha</contributorName>
+          <foreName>Racha</foreName>
+          <surName>Kirakosian</surName>
+            <nameIdentifier schemeURI="http://orcid.org/" nameIdentifierScheme="ORCID">0000-0002-0759-4505</nameIdentifier>
+            <contributorAffiliation schemeURI="https://ror.org/" affiliationIdentifierScheme="ROR" affiliationIdentifier="https://ror.org/0245cg223">Albert-Ludwigs-Universität Freiburg</contributorAffiliation>
+        </contributor>
+		<contributor contributorType="DataCollector">
+			<contributorName>Mutch, Caleb</contributorName>
+		    <foreName>Caleb</foreName>
+		    <surName>Mutch</surName>
+		    <nameIdentifier schemeURI="http://orcid.org/" nameIdentifierScheme="ORCID">0000-0003-4908-4930</nameIdentifier>
+		    <contributorAffiliation schemeURI="https://ror.org/" affiliationIdentifierScheme="ROR" affiliationIdentifier="https://ror.org/0245cg223">Albert-Ludwigs-Universität Freiburg</contributorAffiliation>
+		</contributor>
+    </contributors>
+    <title>Parzival</title>
+    <additionalTitles>
+        <additionalTitle additionalTitleType="TranslatedTitle"/>
+    </additionalTitles>
+    <descriptions>
+        <description descriptionType="Abstract"/>
+    </descriptions>
+    <keywords>
+        <keyword keywordScheme="Other">Artusdichtung.</keyword>
+        <keyword keywordScheme="GND" schemeURI="https://explore.gnd.network/gnd/" valueURI="https://explore.gnd.network/gnd/4328780-3" classificationCode="4328780-3">Dialog (Literaturgattung)</keyword>
+    </keywords>
+    <productionYear>1200-1225</productionYear>
+    <languages>
+        <language>gmh</language>
+    </languages>
+    <subjectAreas>
+        <subjectArea>
+            <controlledSubjectAreaName>Arts and Media</controlledSubjectAreaName>
+        </subjectArea>
+		<subjectArea>
+			<controlledSubjectAreaName>Other</controlledSubjectAreaName>
+			<additionalSubjectAreaName>Literature</additionalSubjectAreaName>
+		</subjectArea>
+    </subjectAreas>
+    <resource resourceType="CriticalEdition">
+        <author>Wolfram von Eschenbach</author>
+        <title>Parzival</title>
+        <editor>Albert Leitzmann</editor>
+        <edition>7th ed.</edition>
+        <pubPlace>Tübingen</pubPlace>
+        <publisher>Niemeyer</publisher>
+        <date>1961</date>
+        <ptr>https://raw.githubusercontent.com/Middle-High-German-Conceptual-Database/plain-txt-Texte/refs/heads/main/PZ.txt</ptr>    
+    </resource>
+    <software>
+        <softwareType type="Resource Processing">
+            <softwareName softwareVersion="Software version e.g. 1.3"></softwareName>
+            <alternativeSoftwareName alternativeSoftwareVersion="Software version eg. 2.0">Software name</alternativeSoftwareName>
+        </softwareType>
+    </software>
+    <processing>
+        <dataProcessing>Text digitized by the Mittelhochdeutsche Begriffsdatenbank.
+        </dataProcessing>
+    </processing>
+    <fundingReferences>
+        <fundingReference>
+            <funderName>VolkswagenStiftung</funderName>
+            <funderIdentifier schemeURI="https://ror.org" type="ROR">03bsmfz84</funderIdentifier>
+        </fundingReference>
+    </fundingReferences>
+</radarFile> 
