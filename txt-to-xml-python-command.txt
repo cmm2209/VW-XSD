@@ -1,6 +1,12 @@
 Navigate to RNNTagger folder
+Put .txt file to be tagged in that folder
+Substitute the file's name for XXXX.txt and XXXX.xml in the code below.
+
+On Windows, run:
+> cmd/rnn-tagger-middle-high-german.bat XXXX.txt
+
+Then:
 Run python
-Then (substituting file name for XXXX.txt and XXXX.xml):
 
 >>> import pandas as pd
 >>> import lxml
