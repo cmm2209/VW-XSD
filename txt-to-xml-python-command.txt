@@ -1,0 +1,11 @@
+Navigate to RNNTagger folder
+Run python
+Then (substituting file name for XXXX.txt and XXXX.xml):
+
+>>> import pandas as pd
+>>> import lxml
+>>> with open ('XXXX.txt', "r") as file:
+...     reader = pd.read_table(file)
+...     df = pd.DataFrame(reader)
+...
+>>> df.to_xml('XXXX.xml', index=False, root_name='p', row_name='w', attr_cols=['pos', 'norm', 'lemma'], elem_cols=['token'], na_rep='', stylesheet='https://raw.githubusercontent.com/cmm2209/VW-XSD/refs/heads/main/pos-to-xml-cleaner.xsl')
