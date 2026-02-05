@@ -18,4 +18,4 @@ Run python
 ...     reader = pd.read_table(file, sep=' +', engine='python')
 ...     df = pd.DataFrame(reader)
 ...
->>> df.to_xml('XXXX.xml', index=False, root_name='p', row_name='w', attr_cols=['pos', 'norm', 'lemma'], elem_cols=['token'], na_rep='', stylesheet='https://raw.githubusercontent.com/cmm2209/VW-XSD/refs/heads/main/pos-to-xml-cleaner.xsl')
+>>> df.to_xml('XXXX.xml', index=False, root_name='body', row_name='w', attr_cols=['pos', 'norm', 'lemma'], elem_cols=['token'], na_rep='', stylesheet='https://raw.githubusercontent.com/cmm2209/VW-XSD/refs/heads/main/pos-to-xml-cleaner.xsl')
