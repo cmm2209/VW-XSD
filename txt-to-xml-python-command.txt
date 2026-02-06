@@ -5,15 +5,7 @@ Substitute the file's name for XXXX.txt and XXXX.xml in the code below.
 On Windows, run:
 > cmd/rnn-tagger-middle-high-german.bat XXXX.txt
 Open a new text file
-Paste this line at the top of the file:
-token   pos     norm    lemma
-Paste the results of RNNTagger below, and save as XXXX-tagged.txt
+Paste the results of RNNTagger below, and save as XXXX-tagged.txt, with utf-8 encoding
 
-Then:
-Run python
-
-import pandas as pd
-with open ('WGL-tagged.txt', 'r', encoding='utf-8') as file:
-    df = pd.read_table(file, sep=' +', engine='python')
-
-df.to_xml('XXXX.xml', index=False, root_name='body', row_name='w', attr_cols=['pos', 'norm', 'lemma'], elem_cols=['token'], na_rep='', stylesheet='https://raw.githubusercontent.com/cmm2209/VW-XSD/refs/heads/main/pos-to-xml-cleaner.xsl')
+Then run:
+> python pos-xml.py XXXX-tagged
