@@ -5,9 +5,8 @@
     version="1.0">
     
     <xsl:template match="/">
-        <div>
-          <p>
-                <xsl:for-each select="p/w">
+        <body>
+                <xsl:for-each select="body/w">
                     <xsl:choose>
                         <xsl:when test="@pos = '$_'">
                             <xsl:choose>
@@ -64,8 +63,7 @@
                             </w>                            
                         </xsl:when>
                     </xsl:choose>
-                    </xsl:for-each>
-          </p>  
-        </div>
+                    </xsl:for-each>  
+        </body>
     </xsl:template>
 </xsl:stylesheet>
