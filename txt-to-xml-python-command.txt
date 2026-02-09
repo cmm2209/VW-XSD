@@ -1,9 +1,9 @@
-Navigate to RNNTagger folder
+Put the .txt file to be tagged in the RNNTagger folder
 Add pos.xml.py to that folder, if you haven't already.
-Put .txt file to be tagged in that folder
 Substitute the file's name for XXXX.txt in the code below.
 
-On Windows, run:
+On Windows, Navigate to RNNTagger folder in terminal/command
+Then run:
 > cmd/rnn-tagger-middle-high-german.bat XXXX.txt
 Open a new text file
 Paste in the results of RNNTagger, and save as XXXXtag.txt, with utf-8 encoding
