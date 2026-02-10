@@ -5,33 +5,37 @@
     xmlns:hei="https://digi.ub.uni-heidelberg.de/schema/tei/heiEDITIONS"
     exclude-result-prefixes="tei hei">
     
+    <!-- 1.  Default “do‑nothing” template (keeps the document stripped) -->
     <xsl:template match="node()|@*"/>
     
+    <!-- 2.  Keep the TEI root -->
     <xsl:template match="tei:TEI">
         <xsl:copy>
             <xsl:apply-templates select="node()"/>
         </xsl:copy>
     </xsl:template>
     
+    <!-- 3.  Keep the text, body, etc. -->
     <xsl:template match="tei:text">
         <xsl:copy>
             <xsl:apply-templates select="@* | node()"/>
         </xsl:copy>
     </xsl:template>
-  
+    
     <xsl:template match="tei:body">
         <xsl:copy>
             <xsl:apply-templates select="@* | node()"/>
         </xsl:copy>
     </xsl:template>
- 
+    
     <xsl:template match="tei:teiHeader"/>
-   
+    
     <xsl:template match="hei:initial">
         <!-- output the string‑value of the element (its character data) -->
         <xsl:value-of select="."/>
     </xsl:template>
     
+    <!-- 4.  Elements that you want to keep (copy them unchanged) -->
     <xsl:template match="
         tei:div | tei:head | tei:p | tei:lb | tei:l | tei:lg |
         tei:pb | tei:milestone"
@@ -43,7 +47,7 @@
             <xsl:apply-templates select="node()"/>
         </xsl:copy>
     </xsl:template>
-  
+    
     <xsl:template match="tei:line" priority="2">
         <xsl:element name="l" namespace="http://www.tei-c.org/ns/1.0">
             <xsl:apply-templates select="@* | node()"/>
@@ -58,12 +62,19 @@
     
     <xsl:template match="text()[normalize-space(.)='']"/>
     
+    
     <xsl:template match="@*">
         <xsl:copy/>
     </xsl:template>
     
     <xsl:template match="text()">
-        <xsl:value-of select="."/>
+      <!--  <xsl:value-of select="."/>  -->
+        <xsl:value-of select="translate(.,'ýẏſuͤ','yysü')"/>
+    </xsl:template>
+    
+    <xsl:template match="tei:choice" priority="3">
+        <!-- The <expan> element is also in the TEI namespace -->
+        <xsl:value-of select="tei:expan"/>
     </xsl:template>
     
     <xsl:output method="xml"

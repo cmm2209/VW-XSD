@@ -8,12 +8,12 @@ Combine an original TEI‑like XML file (MA.xml) with a token‑by‑token POS�
 XML file (MAtag.xml).  The result keeps the original structural markup
 (<div>, <p>, <l>, <lg>, <milestone>, <pb>, …) but replaces every word and the
 six punctuation marks (.,;:?! ) with the corresponding <w> or <pc> element from
-the analysed file.  All *other* punctuation (quotes, brackets, dashes, …) is
-kept verbatim from the original document.
+the analysed file.  All *other* punctuation (quotes, brackets, dashes, the
+section sign “§”, …) is kept verbatim from the original document.
 
 If a mismatch is found the script aborts and prints:
     – the XPath of the element where the mismatch occurred,
-    – the last five successful matches (original token → analysed XML).
+    – **all** previous matches (original token → analysed XML).
 
 Usage
 -----
@@ -38,12 +38,13 @@ TAGGER_PUNCT = {".", ",", ";", ":", "?", "!"}
 # 1. any run of whitespace
 # 2. a single punctuation character that the tagger keeps
 # 3. any single character that is NOT alphanumeric, NOT whitespace and NOT one
-#    of the six kept punctuation marks (quotes, brackets, dashes, etc.)
+#    of the six kept punctuation marks (quotes, brackets, dashes, the
+#    section sign “§”, …)
 # 4. a run of alphanumeric characters (a word)
 TOKEN_RE = re.compile(r"""
     (\s+)                     |   # 1 – whitespace
     ([.,;:?!])                |   # 2 – punctuation kept by the tagger
-    ([^\w\s.,;:?!]+)          |   # 3 – other punctuation (quotes, dashes …)
+    ((?:[^\w\s.,;:?!]+|§))    |   # 3 – other punctuation (including §)
     (\w+)                         # 4 – words (letters, digits, underscore)
     """, re.VERBOSE)
 
@@ -58,7 +59,8 @@ def tokenise(text: str):
 
     * whitespace → returned unchanged (the tagger discards it)
     * one of the six punctuation marks → returned as a single character
-    * any other punctuation (e.g. «, », (, ), –) → returned as its own token
+    * any other punctuation (quotes, brackets, dashes, the section sign “§”, …)
+      → returned as its own token
     * a word (run of alphanumerics) → returned as a single token
     """
     for ws, kept_punct, other_punct, word in TOKEN_RE.findall(text):
@@ -73,8 +75,24 @@ def tokenise(text: str):
 
 
 def load_analyzed_tokens(root):
-    """Return a flat list of the <w> and <pc> elements from the analysed file."""
-    return [el for el in root.iter() if el.tag in ("w", "pc")]
+    """
+    Return a flat list of the <w> and <pc> elements from the analysed file,
+    filtering out any <w> that represents punctuation the tagger should have
+    removed (e.g. a stray “§”).  A <w> is discarded when its text is a single
+    non‑alphanumeric character that is *not* one of the six punctuation marks
+    kept by the tagger.
+    """
+    tokens = []
+    for el in root.iter():
+        if el.tag == "pc":
+            tokens.append(el)
+        elif el.tag == "w":
+            txt = (el.text or "")
+            if len(txt) == 1 and not txt.isalnum() and txt not in TAGGER_PUNCT:
+                # this is a punctuation token that the tagger removed → skip
+                continue
+            tokens.append(el)
+    return tokens
 
 
 def append_item(parent, item, last):
@@ -129,11 +147,10 @@ def process_text(parent, text, token_iter, matches, xpath):
                 )
             items.append(copy.deepcopy(analysed))
             matches.append((tok, etree.tostring(analysed, encoding="unicode")))
-            matches[:] = matches[-5:]
             continue
 
         # --------------------------------------------------------------
-        # 3. “Other” punctuation (quotes, brackets, dashes, …) – keep verbatim
+        # 3. “Other” punctuation (quotes, brackets, dashes, §, …) – keep verbatim
         # --------------------------------------------------------------
         if not any(ch.isalnum() for ch in tok):
             items.append(tok)
@@ -156,7 +173,6 @@ def process_text(parent, text, token_iter, matches, xpath):
             )
         items.append(copy.deepcopy(analysed))
         matches.append((tok, etree.tostring(analysed, encoding="unicode")))
-        matches[:] = matches[-5:]
 
     # ------------------------------------------------------------------
     # Append the newly built sequence to *parent*.
@@ -234,12 +250,12 @@ def main(original_path: Path, analysed_path: Path, output_path: Path):
     analysed_tokens = load_analyzed_tokens(analysed_tree.getroot())
     token_iter = iter(analysed_tokens)
 
-    matches = []
+    matches = []          # will contain **all** successful matches
     try:
         walk_and_merge(orig_tree.getroot(), token_iter, matches)
     except RuntimeError as exc:
         sys.stderr.write(f"\nERROR: {exc}\n")
-        sys.stderr.write("Last five successful matches (original → analysed):\n")
+        sys.stderr.write("All successful matches (original → analysed):\n")
         for orig, ana in matches:
             sys.stderr.write(f"    {orig!r} → {ana}\n")
         sys.exit(1)
