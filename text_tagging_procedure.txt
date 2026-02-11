@@ -1,0 +1,39 @@
+1a. Starting with an eScriptorium-generated text:
+	Paste the plain text into an .xml file in Oxygen.
+	Annotate the text to reflect the original edition's <head>, <milestone>, <p> or <l>, and, if applicable, <lg>.
+	Save result as XXXXorig.xml (substituting the file's name for XXXX, here and below).	
+	Using Oxygen, apply the xml-to-txt.xsl transformation.
+	Save the result as XXXX.txt
+
+1b. Starting with a found plain text in verse:
+	In a folder that contains line_tagger.py, save the file as XXXX.txt 
+		(substituting the file's name for XXXX, here and below).	
+	On Windows, navigate to that folder in terminal/command,
+	Then run:
+	> python line_tagger.py XXXX 1 (or replace '1' with the text's first line number)
+	The file XXXXorig.xml should result.
+
+1c. Starting with an already created TEI .xml file:
+	Open it in Oxygen.
+	Apply the strip-most-tei.xsl transformation.
+	Save result as XXXXorig.xml (substituting the file's name for XXXX, here and below).	
+	Using Oxygen, apply the xml-to-txt.xsl transformation.
+	Save the result as XXXX.txt
+
+
+2. Tag the plain text:
+	Copy XXXX.txt and XXXXorig.xml into the RNNTagger folder.
+	Add pos.xml.py an replace_tokens.py to that folder, if you haven't already.
+
+	On Windows, navigate to RNNTagger folder in terminal/command,
+	Then run:
+	> cmd/rnn-tagger-middle-high-german.bat XXXX.txt
+	Open a new text file and paste in the results of RNNTagger's operation.
+	"Save as" with the name XXXXtag.txt, ***with utf-8 encoding***.
+	Then run:
+	> python pos-xml.py XXXXtag
+    	That should generate a new file, called XXXXtag.xml
+
+3. Recombine the tagged text with the original xml:
+	Run: 
+	> python replace_tokens.py XXXXorig.xml XXXXtag.xml XXXXfinal.xml
