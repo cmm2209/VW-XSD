@@ -841,6 +841,22 @@
         </xs:annotation>
     </xs:element>
       
+    <xs:element name="relatedInformations">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="relatedInformation" minOccurs="1" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:element name="relatedInformation" type="xs:string">
+        <xs:annotation>
+            <xs:documentation>Specifies the data processing instructions, used for creating the data
+                in the digital resource.
+            </xs:documentation>
+        </xs:annotation>
+    </xs:element>
+    
     <xs:element name="fundingReferences">
         <xs:complexType>
             <xs:sequence>

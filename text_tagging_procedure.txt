@@ -1,6 +1,7 @@
 1a. Starting with an eScriptorium-generated text:
-	Paste the plain text into an .xml file in Oxygen.
-	Annotate the text to reflect the original edition's <head>, <milestone>, <p> or <l>, and, if applicable, <lg>.
+	Open eScriptTemplate.xml in Oxygen and paste in the plain text.
+	Run Find & Replace for all character replacement scenarios noted while correcting in eScriptorium.
+	Annotate the text to reflect the original edition's <head>, <sp>, <speaker>, <stage>, <milestone>, <p> or <l>, and, if applicable, <lg>.
 	Save result as XXXXorig.xml (substituting the file's name for XXXX, here and below).	
 	Using Oxygen, apply the xml-to-txt.xsl transformation.
 	Save the result as XXXX.txt
@@ -23,6 +24,7 @@
 
 2. Tag the plain text:
 	Copy XXXX.txt and XXXXorig.xml into the RNNTagger folder.
+	Reopen XXXX.txt as "save as," making sure it still has utf-8 encoding.
 	Add pos.xml.py an replace_tokens.py to that folder, if you haven't already.
 
 	On Windows, navigate to RNNTagger folder in terminal/command,

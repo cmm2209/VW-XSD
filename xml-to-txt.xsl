@@ -10,12 +10,13 @@
           
     <xsl:template match="tei:teiHeader"/>
     
-    <xsl:template match="TEI/text">
+    <xsl:template match="node()[@xml:lang='la | en']"/>
+    
+    <xsl:template match="TEI/body">
         <xsl:for-each select="l | head | p">
-            <xsl:value-of select="."/>
-            <xsl:text>&#10;</xsl:text>    
+        <xsl:value-of select="."/>
+        <xsl:text>&#10;</xsl:text>    
         </xsl:for-each>   
     </xsl:template>
-    
     
 </xsl:stylesheet>

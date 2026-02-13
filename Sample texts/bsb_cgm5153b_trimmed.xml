@@ -4,7 +4,7 @@
       <div>
          <milestone ana="hc:Chapter" n="36.2" spanTo="#end.a9_ep36.2"/>
          <milestone ana="hc:Heading" resp="hc:Editor" xml:lang="en" spanTo="#end.head.a9_ep36.2.en"/>
-         <head>Charlemagne: Legislation and wars § 2</head>
+         <head xml:lang="en">Charlemagne: Legislation and wars § 2</head>
          <milestone ana="hc:Heading" resp="hc:Editor" xml:lang="de" spanTo="#end.head.a9_ep36.2.de"/>
          <head>Karl der Große: Gesetze ünd Feldzüge § 2</head>
          <l n="1">Karel der reich</l>
@@ -19,7 +19,7 @@
          <l n="10">Do hiez iz domini sanctitas</l>
          <milestone ana="hc:Chapter" n="36.3" spanTo="#end.a9_ep36.3"/>
          <milestone ana="hc:Heading" resp="hc:Editor" xml:lang="en" spanTo="#end.head.a9_ep36.3.en"/>
-         <head>Charlemagne: Absolütion and exemplary natüre § 3</head>
+         <head xml:lang="en">Charlemagne: Absolütion and exemplary natüre § 3</head>
          <milestone ana="hc:Heading" resp="hc:Editor" xml:lang="de" spanTo="#end.head.a9_ep36.3.de"/>
          <head>Karl der Große: Sündenerlass ünd Vorbildlichkeit § 3</head>
          <l n="11">Karel het ein sünde getan</l>
