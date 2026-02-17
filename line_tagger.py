@@ -50,7 +50,8 @@ def main():
     for line in lines:
         line_element = ET.SubElement(root, 'l')
         line_element.text = line
-        line_element.set('n', f'{int(initial_line)}')
+        if int(initial_line) % 5 == 0:
+            line_element.set('n', f'{int(initial_line)}')
         initial_line=int(initial_line)+1
 
     # Create the XML tree
