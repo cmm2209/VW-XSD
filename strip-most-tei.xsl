@@ -37,7 +37,7 @@
     
     <!-- 4.  Elements that you want to keep (copy them unchanged) -->
     <xsl:template match="
-        tei:div | tei:head | tei:p | tei:lb | tei:l | tei:lg |
+        tei:div | tei:head | tei:p | tei:lb | tei:l | tei:seg | tei:lg |
         tei:pb | tei:milestone"
         priority="2">
         <xsl:copy>
