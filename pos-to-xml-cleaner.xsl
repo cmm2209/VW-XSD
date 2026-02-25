@@ -56,7 +56,8 @@
                     </xsl:when>
                     <xsl:when test="@pos != ''">
                         <w>
-                            <xsl:attribute name="pos"><xsl:value-of select="@pos"/></xsl:attribute>
+                            <xsl:attribute name="pos"><xsl:value-of select="@G"/></xsl:attribute>
+                            <xsl:attribute name="msd"><xsl:value-of select="@H"/></xsl:attribute>
                             <xsl:attribute name="norm"><xsl:value-of select="@norm"/></xsl:attribute>
                             <xsl:attribute name="lemma"><xsl:value-of select="@lemma"/></xsl:attribute>
                             <xsl:value-of select="token"/>

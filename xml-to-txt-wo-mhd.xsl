@@ -8,14 +8,13 @@
     <xsl:output method="text"
         encoding="UTF-8"
         indent="no"/>
-
+        
     <xsl:template match="@* | node()">
         <xsl:copy>
             <xsl:apply-templates select="@* | node()"/>
         </xsl:copy>
     </xsl:template>
     
-
     <xsl:template
         match="tei:*[
         not(@xml:lang)                     
@@ -23,4 +22,12 @@
         and not(descendant::*[@xml:lang])  
         and not(self::tei:TEI)            
         ]"/>
+    
+    <xsl:template match="tei:stage/tei:q"/>    
+    
+    <xsl:template match="text()">
+        <!--  <xsl:value-of select="."/>  -->
+        <xsl:value-of select="translate(.,'[]/','   ')"/>
+    </xsl:template>
+    
 </xsl:stylesheet>

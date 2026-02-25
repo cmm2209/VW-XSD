@@ -1,0 +1,797 @@
+Incipit	3-LA1--6---	<unknown>
+Ludus	11B---A1---	odus
+de	4-S--------	de
+nocte	11C---F2---	nox
+paschae	11A---B2---	pasce
+de	4-S--------	de
+tribus	11C---O2---	tres
+Mariis	11A---O2---	iarius
+vel	4-O-------1	vel
+Tres	11E---M2---	res
+Mariae	11A---B2---	iarius
+.	SENT	.
+		
+Prima	11A---A2---	primus
+Maria	11A---A2---	iarius
+cantat	3-JA1--6---	canto
+:	-----------	:
+HEu	11F---J1---	is
+nobis	11F---L1---	ego
+internas	11A---M2---	internus
+mentes	11C---M2---	mens
+quanti	11B---J1---	quantus
+pulsant	3-JA1--9---	pulso
+gemitus	2-LM41A1---	gigno
+pro	4-S--------	pro
+nostro	11B---F1---	noster
+consolatore	11C---F1---	consolator
+","	-----------	
+quo	11F---F1---	qui
+privamur	3-JJ1--7---	privo
+miserae	11A---J1---	miser
+","	-----------	
+quem	11F---D1---	qui
+crudelis	11B---L1---	crudelus
+Iudaeorum	13B---J1---	<unknown>
+morti	11C---C1--1	mors
+dedit	3-JA4--6---	do
+populus	11B---M1---	populus
+.	SENT	.
+		
+Secunda	11A---A2---	ecundus
+Maria	11A---A2---	iarius
+:	-----------	:
+Iam	11F---D2---	<unknown>
+percusso	2-LM41F1---	percudo
+ceu	4-S-------1	ceu
+pastore	11C---F1---	pastor
+oves	11C---J1--1	ovis
+errant	3-JA1--9---	erro
+miserae	11A---J2---	miser
+","	-----------	
+sic	4-O--------	sic
+magistro	11B---F1---	magister
+discedente	2-LD11F3---	discedo
+turbantur	3-JJ1--9---	turbo
+discipuli	11B---J1---	discipulus
+atque	4-O--------	atque
+nos	11F---M1---	ego
+absente	2-LD11F3---	abso
+eo	11F---F1---	is
+dolor	11C---A1---	dolor
+tenet	3-KA1--6---	teneo
+nimius	12C---G----	nimis
+.	SENT	.
+		
+Tertia	11A---A2--1	tertius
+Maria	11A---A2---	iarius
+:	-----------	:
+Sed	4-O-------1	ed
+eamus	3-JA1--7---	eo
+et	4-O--------	et
+ad	4-S--------	ad
+eius	11F---B1--2	is
+properemus	3-LB2--7---	propero
+tumulum	11B---D1---	tumulus
+:	-----------	:
+si	4-O--------	si
+dileximus	3-LA1--7---	dilexo
+viventem	2-LD11D2--1	vivo
+","	-----------	
+diligamus	3-LB1--7---	diligo
+mortuum	11D---K1---	mortus
+et	4-O--------	et
+ungamus	3-JA1--7---	ungo
+corpus	11C---D3---	corpus
+eius	11F---B1--2	is
+oleo	11F---C1---	oleus
+sanctissimo	13A---M2---	sanctus
+.	SENT	.
+		
+Prima	11A---A2---	primus
+Maria	11A---A2---	iarius
+dicit	3-NA1--6---	dico
+Rickmum	11B---D3---	<unknown>
+Secunda	11B---M3---	ecundus
+Maria	11B---M3---	iarius
+dicit	3-NA1--6---	dico
+Rickmum	11B---D1---	<unknown>
+:	-----------	:
+Tertia	11A---A2--1	tertius
+Maria	11A---A2---	iarius
+dicit	3-NA1--6---	dico
+Rickmum	11B---D3---	<unknown>
+:	-----------	:
+Et	4-O--------	et
+immediate	11B---G---1	immediatus
+procedentes	2-LD11J1---	procedo
+ad	4-S--------	ad
+sepulcrum	11B---D3---	sepulcrum
+simul	4-O--------	simul
+cantando	2-JE-1F----	canto
+antiphonam	11A---D2---	antiphona
+:	-----------	:
+Sed	4-O-------1	ed
+eamus	11F---D2--2	is
+unguentum	11B---D3---	unguentum
+emere	3-LH1------	emo
+","	-----------	
+cum	4-S-------1	cum
+quo	11F---F1---	qui
+bene	4-O--------	bene
+possimus	3-NA1--7---	possum
+ungere	3-LH1------	ungo
+corpus	11C---D3---	corpus
+domini	11B---B1---	dominus
+sacratissimum	13B---D3---	sacratus
+.	SENT	.
+		
+Tres	11E---J2---	res
+Mariae	11A---J2---	iarius
+cantant	3-JA1--9---	canto
+:	-----------	:
+Quis	11F---L2--1	qui
+revolvet	3-KA1--6---	revolveo
+nobis	11F---L1---	ego
+ab	4-S-------2	a
+ostio	11B---F3---	ostium
+lapidem	11C---D1---	lapis
+","	-----------	
+quem	11F---D1---	qui
+tegere	3-LH1------	tego
+sanctum	11B---D1---	sanctus
+cernimus	3-LA1--7---	cerno
+sepulcrum	11B---D1---	sepulcrus
+?	SENT	.
+		
+Tertia	11A---A2--1	tertius
+Maria	11A---A2---	iarius
+dicit	3-NA1--6---	dico
+Rickmum	11B---D1---	<unknown>
+:	-----------	:
+Tunc	4-O--------	<unknown>
+angeli	11B---J1---	angelus
+cantant	3-JA1--9---	canto
+:	-----------	:
+Quem	11F---D1---	tu
+quaeritis	11C---B2--1	quaeris
+","	-----------	
+o	4-O--------	o
+tremulae	11A---J2--1	tremula
+mulieres	11C---J2---	mulier
+","	-----------	
+in	4-S--------	in
+hoc	11F---F3---	hic
+tumulo	11B---F3---	tumulum
+plorantes	2-JD11J1---	ploro
+?	SENT	.
+		
+Et	4-O-------1	et
+primus	11B---A1---	primus
+angelus	11B---A1---	angelus
+dicit	3-NA1--6---	dico
+Rickmum	11B---D1---	<unknown>
+:	-----------	:
+Mariae	11A---J2---	iarius
+simul	4-O--------	simul
+cantant	3-JA1--9---	canto
+antiphonam	11A---D2---	antiphona
+:	-----------	:
+Ihesum	11F---D1---	hes
+Nazarenum	11D---K2---	sazarenus
+crucifixum	2-LM41D1---	crucifigo
+quaerimus	3-NA3--7---	quaero
+.	SENT	.
+		
+Tertia	11A---A2--1	tertius
+Maria	11A---A2---	iarius
+dicit	3-NA1--6---	dico
+Rickmum	11B---D3---	<unknown>
+:	-----------	:
+Angeli	11B---J1---	ingelus
+simul	4-O--------	simul
+cantant	3-JA1--9---	canto
+:	-----------	:
+Non	4-O--------	son
+est	3-NA1--6---	sum
+hic	11F---A1---	hic
+","	-----------	
+quem	11F---D1---	qui
+quaeritis	11C---B2--1	quaeris
+","	-----------	
+sed	4-O-------1	sed
+cito	2-LM41F1---	cigo
+euntes	2-LD11J1---	eo
+nuntiate	2-JM41G----	nuntio
+discipulis	11B---L1---	discipulus
+eius	11F---B1--2	is
+et	4-O--------	et
+Petro	11B---G----	<unknown>
+","	-----------	
+quia	4-O--------	quia
+surrexit	3-LA4--6---	surrigo
+Ihesus	11D---M1---	<unknown>
+.	SENT	.
+		
+Secundus	11B---A1---	ecundus
+angelus	11B---A1---	angelus
+dicit	3-NA1--6---	dico
+Rickmum	11B---D1---	<unknown>
+:	-----------	:
+Et	4-O--------	et
+tunc	4-O--------	tunc
+angeli	11B---J1---	angelus
+simul	4-O--------	simul
+cantant	3-JA1--9---	canto
+:	-----------	:
+Venite	3-KC1--8---	<unknown>
+et	4-O--------	et
+videte	3-KA1--6--1	video
+locum	11B---D1---	locus
+","	-----------	
+ubi	4-O--------	ubi
+positus	11D---A1---	positus
+erat	3-NA2--6---	sum
+dominus	11B---A1---	dominus
+!	SENT	.
+		
+alleluia	11F---J3---	alleluis
+!	SENT	.
+		
+alleluia	11F---J3---	alleluis
+!	SENT	.
+		
+Tertius	11B---A1--1	tertius
+angelus	11B---A1---	angelus
+dicit	3-NA1--6---	dico
+Rickmum	11B---D1---	<unknown>
+:	-----------	:
+Tunc	4-O--------	<unknown>
+Mariae	11A---J2---	iarius
+recedendo	2-LE-1F----	recedo
+simul	4-O--------	simul
+cantant	3-JA1--9---	canto
+:	-----------	:
+Ad	4-S--------	id
+monumentum	11B---D3---	monumentum
+venimus	3-MA1--7---	venio
+gementes	11C---M1---	gemens
+","	-----------	
+angelos	11B---M1---	angelus
+domini	11B---B1---	dominus
+sedentes	11C---M1---	sedens
+vidimus	11D---B1--1	vidimus
+et	4-O--------	et
+dicentes	2-ND11J1---	dico
+","	-----------	
+quia	4-O--------	quia
+surrexit	3-LA4--6---	surrigo
+Ihesus	11D---M1---	<unknown>
+.	SENT	.
+		
+Prima	11A---A2---	primus
+Maria	11A---A2---	iarius
+dicit	3-NA1--6---	dico
+Rickmum	11B---D3---	<unknown>
+:	-----------	:
+Tunc	4-O--------	<unknown>
+procedunt	3-LA1--9---	procedo
+","	-----------	
+et	4-O--------	et
+cantat	3-JA1--6---	canto
+prima	11B---M3---	primus
+recedens	2-LD11D3---	recedo
+versum	11B---D3--1	versus
+","	-----------	
+deinde	4-O--------	deinde
+secunda	11A---A2---	secundus
+tecundum	4-S--------	tecundum
+versum	11D---D1---	versus
+","	-----------	
+deinde	4-O--------	deinde
+tertia	11A---A2--1	tertius
+ultimum	13B---D1---	ulterior
+versum	11B---D3--1	versus
+","	-----------	
+ulterius	12C---G----	ulterior
+procedendo	2-LE-1F----	procedo
+cantando	2-JE-1F----	canto
+:	-----------	:
+Prima	11A---A2---	primus
+Maria	11A---A2---	iarius
+:	-----------	:
+Ihesu	11D---F1---	<unknown>
+","	-----------	
+nostra	11A---A2---	noster
+redemptio	11C---A2---	redemptio
+","	-----------	
+amor	11C---A1---	amor
+et	4-O--------	et
+desiderium	11B---A3---	desiderium
+","	-----------	
+deus	11F---A1---	deus
+creator	11C---A1---	creator
+omnium	11C---K3---	omnis
+","	-----------	
+homo	11C---A1---	homo
+in	4-S--------	in
+fine	11C---F1---	finis
+temporum	11C---K3---	tempus
+.	SENT	.
+		
+Secunda	11A---A2---	ecundus
+Maria	11A---A2---	iarius
+:	-----------	:
+Quae	11F---A2--1	qui
+te	11F---D1---	tu
+vicit	3-LA1--6--1	vico
+clementia	11A---A2---	clementia
+","	-----------	
+ut	4-O-------1	ut
+ferres	11E---A2---	ferres
+nostra	11A---A2---	noster
+crimina	11A---A2---	crimina
+","	-----------	
+crudelem	11C---D2---	crudelis
+mortem	11C---D2---	mors
+patiens	11C---A3--1	patiens
+","	-----------	
+ut	4-O-------1	ut
+nos	11F---J1---	ego
+a	4-S-------1	a
+morte	11C---F2---	mors
+tolleres	11C---M1---	tolles
+.	SENT	.
+		
+Tertia	11A---A2--1	tertius
+Maria	11A---A2---	iarius
+:	-----------	:
+Inferni	11B---J1---	<unknown>
+claustra	11A---A2---	clauster
+penetrans	2-JD11A2---	penetro
+","	-----------	
+tuos	11B---M1---	tuus
+captivos	11B---M1---	captivus
+redimens	2-LO-1M1---	redimo
+","	-----------	
+victor	11C---A1--1	victor
+triumpho	11B---F3---	triumphus
+nobili	11C---F3---	nobilis
+","	-----------	
+ad	4-S--------	ad
+dextram	11A---D2---	dexter
+patris	11C---B1---	pater
+residens	2-LD11A1---	resido
+.	SENT	.
+		
+Tertia	11A---A2--1	tertius
+Maria	11A---A2---	iarius
+:	-----------	:
+Cum	11F---D1---	is
+venissem	2-MD11D2--1	venio
+ungere	3-LH1------	ungo
+mortuum	11D---K1---	mortus
+","	-----------	
+monumentum	11B---A3---	monumentum
+inveni	3-MQ1------	invenio
+vacuum	11D---K1---	vacuus
+.	SENT	.
+		
+heu	11F---A1---	hic
+nescio	11C---A2---	nescio
+recte	11B---G----	rectus
+discernere	3-LH1------	discerno
+","	-----------	
+ubi	4-O--------	ubi
+possim	2-KM41G----	posse
+magistrum	11B---D1---	magister
+quaerere	3-KH1------	quaereo
+.	SENT	.
+		
+heu	11F---A1---	hic
+","	-----------	
+heu	11F---A1---	hic
+","	-----------	
+heu	11F---A1---	hic
+redemptio	11C---A2---	redemptio
+Israel	11C---B1---	<unknown>
+","	-----------	
+ut	4-O-------1	ut
+quid	11F---D3---	quis
+mortem	11C---D2---	mors
+sustinuit	3-LA1--6---	sustinuo
+!	SENT	.
+		
+Salvator	11C---A1---	valvator
+in	4-S--------	in
+specie	11E---F2---	species
+hortulani	11C---F2---	hortulanis
+cantat	3-JA1--6---	canto
+:	-----------	:
+Mulier	11C---G----	iule
+","	-----------	
+quid	11F---D3---	quis
+ploras	11A---M2---	plora
+?	SENT	.
+		
+quem	11F---D1---	qui
+quaeris	11F---A1-A-	quaeris
+?	SENT	.
+		
+Et	4-O-------1	et
+dicit	3-NA1--6---	dico
+tum	4-O--------	tum
+hunc	11F---D1---	hic
+Rickmum	11B---D1---	<unknown>
+:	-----------	:
+Maria	11A---A2---	iarius
+cantat	3-JA1--6---	canto
+etc.	5----------	breviata~loci~notatio
+:	-----------	:
+Domine	11C---F3H--	omen
+","	-----------	
+si	4-O--------	si
+tu	11F---A1---	tu
+sustulisti	11B---B3---	sustulistus
+eum	11F---D1---	is
+","	-----------	
+dicito	2-NM41F1---	dico
+mihi	11F---C1--1	ego
+","	-----------	
+et	4-O--------	et
+ubi	4-O--------	ubi
+posuisti	2-LM41J1---	pono
+eum	11F---D1---	is
+","	-----------	
+et	4-O--------	et
+ego	11F---A1---	ego
+eum	11F---D1---	is
+tollam	11F---D2---	tolla
+.	SENT	.
+		
+Et	4-O-------1	et
+dicit	3-NA1--6---	dico
+Richmum	11B---D1---	<unknown>
+.	SENT	.
+		
+Salvator	11C---A1---	valvator
+respondet	3-KA1--6---	respondeo
+rigmatice	11B---G----	rigmaticus
+cantando	2-JE-1F----	canto
+:	-----------	:
+Deinde	4-O--------	<unknown>
+Maria	11A---A2---	iarius
+iterum	4-O--------	iterum
+cantat	3-JA1--6---	canto
+rigmatice	11B---G-H--	rigmaticus
+:	-----------	:
+Dolor	11C---A1---	olor
+crescit	3-LA1--6---	cresco
+","	-----------	
+tremunt	3-LA4--9---	tresco
+praecordia	11B---M3---	praecordium
+de	4-S--------	de
+magistri	11B---B1---	magister
+pii	11B---B1---	pius
+absentia	11A---F2--1	absentia
+","	-----------	
+qui	11F---A1---	qui
+salvavit	3-JA4--6---	salvo
+me	11F---D1---	ego
+","	-----------	
+plenam	11A---D2---	plenus
+vitiis	11A---O2--1	vitia
+","	-----------	
+pulsis	11B---O1---	pulsus
+a	4-S-------1	a
+me	11F---D1---	ego
+septem	11C---D2---	sepse
+daemoniis	11A---O2---	daemonia
+.	SENT	.
+		
+heu	11F---A1---	hic
+","	-----------	
+heu	11F---A1---	hic
+","	-----------	
+heu	11F---A1---	hic
+redemptio	11C---A2---	redemptio
+Israhel	4-O-------1	<unknown>
+","	-----------	
+ut	4-O-------1	ut
+quid	11F---D3---	quis
+mortem	11C---D2---	mors
+sustinuit	3-LA1--6---	sustinuo
+!	SENT	.
+		
+Tunc	4-O--------	<unknown>
+accedit	3-LA1--6---	accedo
+Salvator	11C---A1---	valvator
+et	4-O--------	et
+cantat	3-JA1--6---	canto
+","	-----------	
+ut	4-O-------1	ut
+sequitur	3-LJ1--6--1	sequor
+cum	4-S-------1	cum
+Rickmo	11B---F1---	<unknown>
+:	-----------	:
+Et	4-O--------	et
+dicit	3-NA1--6---	dico
+:	-----------	:
+Tunc	4-O--------	<unknown>
+Maria	11A---A2---	iarius
+cantat	3-JA1--6---	canto
+inmediate	11B---G---1	inmediatus
+:	-----------	:
+Rabi	4-O--------	<unknown>
+","	-----------	
+quod	11F---A3---	qui
+dicitur	3-NJ1--6---	dico
+magister	11B---A1---	magister
+!	5-G--------	num.~arab.		
+Et	4-O-------1	et
+dicit	3-NA1--6---	dico
+:	-----------	:
+Et	4-O--------	et
+tunc	4-O--------	tunc
+Salvator	11C---A1---	valvator
+iterum	4-O--------	iterum
+cantat	3-JA1--6---	canto
+cum	4-S-------1	cum
+rickmo	11B---F1---	<unknown>
+(	-----------	(
+ut	4-O-------1	ut
+prius	12C---G----	prior
+supra	4-S--------	supra
+)	-----------	)
+:	-----------	:
+Maria	11A---A2---	iarius
+respondet	3-KA1--6---	respondeo
+iterum	4-O--------	iterum
+:	-----------	:
+Rabi	4-O--------	<unknown>
+","	-----------	
+quod	11F---A3---	qui
+dicitur	3-NJ1--6---	dico
+magister	11B---A1---	magister
+!	5-G--------	num.~arab.
+Cantans	2-JD11A1---	nanto
+cum	4-S-------1	cum
+rickmo	11B---F1---	<unknown>
+(	-----------	(
+ut	4-O-------1	ut
+supra	4-S--------	supra
+)	-----------	)
+",Ich"	5-G--------	num.~rom.
+hore	11C---F1---	hor
+'	5-G--------	num.~arab.
+:	-----------	:
+Item	4-O--------	<unknown>
+post	4-S--------	post
+hoc	11F---D3---	hic
+ultimum	13B---A3---	ulterior
+cantat	3-JA1--6---	canto
+Maria	11B---M3---	iarius
+:	-----------	:
+Tibi	4-O--------	ibi
+gloria	11A---A2---	gloria
+in	4-S--------	in
+saecula	11B---M3--1	saeculum
+!	SENT	.
+		
+Et	4-O-------1	et
+dicit	3-NA1--6---	dico
+rickmum	11B---D1---	<unknown>
+",Ich"	-----------	<unknown>
+hore	11C---F1---	hor
+here	11C---F1---	hic
+dyne	11C---F1---	dynus
+stymme	11C---F1---	stymmes
+'	5-G--------	num.~arab.
+(	-----------	(
+ut	4-O-------1	ut
+supra	4-S--------	supra
+)	-----------	)
+:	-----------	:
+Post	4-S--------	cost
+hoc	11F---D3---	hic
+Salvator	11C---A1---	valvator
+immediate	11B---G---1	immediatus
+cantat	3-JA1--6---	canto
+:	-----------	:
+Prima	11B---M3---	<unknown>
+quidem	4-O--------	quidem
+suffragia	11B---M3---	suffragium
+stola	11F---M3---	stolus
+tulit	3-NA4--6---	tulfero
+carnalia	11C---M3---	carnalis
+exhibendo	2-KE-1F----	exhibeo
+communia	11C---M3---	communis
+se	11F---M3---	sui
+per	4-S--------	per
+naturae	11A---B2--1	natura
+munia	11C---M3---	munis
+.	SENT	.
+		
+Maria	11A---A2---	iarius
+cantat	3-JA1--6---	canto
+:	-----------	:
+Sancte	11B---G----	anctus
+deus	11F---A1---	deus
+!	SENT	.
+		
+Et	4-O-------1	et
+dicit	3-NA1--6---	dico
+rickmum	11B---D3---	<unknown>
+:	-----------	:
+Deinde	4-O--------	<unknown>
+Salvator	11C---A1---	valvator
+ultra	4-S--------	ultra
+cantat	3-JA1--6---	canto
+stando	2-JE-1F----	sto
+","	-----------	
+ut	4-O-------1	ut
+sequitur	3-LJ1--6--1	sequor
+:	-----------	:
+Haec	4-O--------	<unknown>
+priori	12C---C3---	prior
+dissimilis	11C---A2---	dissimilis
+haec	11F---A2--1	hic
+est	3-NA1--6---	sum
+incorruptibilis	11C---A2---	incorruptibilis
+.	SENT	.
+		
+quae	11F---A2--1	qui
+tunc	4-O--------	tunc
+fuit	3-NA4--6---	sum
+passibilis	11C---A2---	passibilis
+","	-----------	
+iam	4-O-------1	iam
+non	4-O--------	non
+erit	3-NA3--6---	sum
+solubilis	11C---A2---	solubilis
+.	SENT	.
+		
+Maria	11A---A2---	iarius
+cantat	3-JA1--6---	canto
+:	-----------	:
+Sancte	11B---G----	anctus
+fortis	11C---A1---	fortis
+!	SENT	.
+		
+dicendo	2-NE-1F----	dico
+rickmum	11B---D3---	<unknown>
+'	4-S-------1	
+Here	11C---F1---	is
+vader	11C---F1---	vadis
+vnde	4-O-------1	ve
+son	4-O--------	son
+'	5-G--------	num.~arab.
+:	-----------	:
+Deinde	4-O--------	<unknown>
+Salvator	11C---A1---	valvator
+cantat	3-JA1--6---	canto
+","	-----------	
+ut	4-O-------1	ut
+sequitur	3-LJ1--6--1	sequor
+:	-----------	:
+Ergo	4-O--------	orgo
+noli	3-LQ1------	nolo
+me	11F---D1---	ego
+tangere	3-LH1------	tango
+nec	4-O--------	nec
+ultra	4-S--------	ultra
+velis	3-NB1--6--1	volo
+plangere	3-LH1------	plango
+","	-----------	
+quem	11F---D1---	qui
+mox	11B---F1---	moxus
+in	4-S--------	in
+puro	11B---F1---	purus
+sidere	11C---F1---	sidus
+cernes	11C---M1---	cernes
+ad	4-S--------	ad
+patrem	11C---D1---	pater
+scandere	3-KH1------	scandeo
+.	SENT	.
+		
+Et	4-O-------1	et
+dicit	3-NA1--6---	dico
+tum	4-O--------	tum
+hunc	11F---D1---	hic
+rickmum	11B---D1---	<unknown>
+:	-----------	:
+Maria	11A---A2---	iarius
+cantat	3-JA1--6---	canto
+:	-----------	:
+Sancte	11B---G----	anctus
+et	4-O--------	et
+immortalis	11C---A1---	immortalis
+","	-----------	
+miserere	3-LH1------	misero
+nobis	11F---L1---	ego
+!	SENT	.
+		
+Et	4-O-------1	et
+dicit	3-NA1--6---	dico
+rickmum	11B---D3---	<unknown>
+:	-----------	:
+Et	4-O--------	et
+tunc	4-O--------	tunc
+Salvator	11C---A1---	valvator
+recedit	3-LA1--6---	recedo
+.	SENT	.
+		
+Maria	11A---A2---	iarius
+cantat	3-JA1--6---	canto
+","	-----------	
+ut	4-O-------1	ut
+sequitur	3-LJ1--6--1	sequor
+:	-----------	:
+Vere	4-O--------	<unknown>
+vidi	3-LA4--4--1	vido
+dominum	11B---D1---	dominus
+vivere	3-LH1-----1	vivo
+nec	4-O--------	nec
+dimisit	3-LA4--6---	dimitto
+me	11F---D1---	ego
+pedes	3-LA3--5---	pedo
+tangere	3-LH1------	tango
+:	-----------	:
+discipulos	11B---M1---	discipulus
+oportet	3-KA1--6---	oportet
+credere	3-LH1------	credo
+","	-----------	
+quod	4-O--------	quod
+ad	4-S--------	ad
+patrem	11C---D1---	pater
+velit	3-NB1--6--1	volo
+ascendere	3-LH1------	ascendo
+.	SENT	.
+		
+Et	4-O-------1	et
+dicit	3-NA1--6---	dico
+Richmum	11B---D3---	<unknown>
+:	-----------	:
+Et	4-O--------	et
+cum	4-S-------1	cum
+hoc	11F---A3---	hic
+incipiet	3-LA3--6---	incipio
+cantor	11C---A1---	cantor
+sequentiam	11A---D2--1	sequentia
+etc.	5----------	breviata~loci~notatio
+:	-----------	:
+Victimae	13A---J2---	<unknown>
+paschali	11B---J1---	paschalus
+laudes	11C---J1---	laus
+immolent	3-KA1--9---	immoleo
+Christiani	11C---C2---	nristianis
+.	SENT	.
+		
+agnus	2-LD11A1---	ago
+redemit	3-KA4--6---	redeo
+oves	11C---M1--1	ovis
+;	-----------	;
+Christus	11B---A1---	nristus
+innocens	2-LD11A1---	innoco
+patri	11C---C1---	pater
+reconciliavit	3-JA4--6--1	reconcilio
+peccatores	11C---M1---	peccator
+.	SENT	.
+		
+mors	11C---A2---	mors
+et	4-O--------	et
+vita	11A---A2--1	vita
+duello	11F---C1---	duellus
+conflixere	3-LH1------	conflixo
+mirando	2-JE-1F----	miror
+","	-----------	
+dux	5-G--------	num.~rom.
+vitae	11A---B2--1	vita
+mortuus	2-JM41A1---	morior
+regnat	3-JA1--6---	regno
+vivus	11B---A1--1	vivus
+.	SENT	.
+		
+Explicit	3-LA1--6---	oxplico
+ludus	11B---A1---	ludus
+.	SENT	.
