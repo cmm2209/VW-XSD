@@ -66,7 +66,7 @@ def main():
         attr_cols=['pos', 'norm', 'lemma'],
         elem_cols=['token'],
         na_rep='',
-        stylesheet='https://raw.githubusercontent.com/cmm2209/VW-XSD/refs/heads/main/pos-to-xml-cleaner.xsl'
+        stylesheet='https://raw.githubusercontent.com/cmm2209/VW-XSD/refs/heads/main/old-pos-to-xml-cleaner.xsl'
     )
 
     print(f"✅  Converted '{txt_path}' → '{xml_path}'")

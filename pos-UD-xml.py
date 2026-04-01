@@ -110,7 +110,7 @@ def main():
 
         # Case / Tense
         "Pres": "Tense=Pres",
-        "Past": "Tense=Past'",
+        "Past": "Tense=Past",
         "Nom":  "Case=Nom",
         "Akk":  "Case=Acc",
         "Gen":  "Case=Gen",
@@ -133,12 +133,14 @@ def main():
     kp.add_keywords_from_dict(
         {v: [k] for k, v in thesaurus.items()}
     )
-
-    def split_pos_and_feats(row, cols_AF):
+    
+    cols = ['A', 'B', 'C', 'D', 'E', 'F']
+    
+    def split_pos_and_feats(row, cols):
         # Split each column into parallel analyses
         parts = [
             row[c].split('|') if isinstance(row[c], str) else ['*']
-            for c in cols_AF
+            for c in cols
         ]
 
         G_out = []
@@ -179,8 +181,7 @@ def main():
             kp.replace_keywords(part) for part in text.split('|')
         )
 
-    cols = ['A', 'B', 'C', 'D', 'E', 'F']
-    dfexpan[cols] = dfexpan[cols].applymap(
+    dfexpan[cols] = dfexpan[cols].map(
         lambda x: replace_parallel(x, kp)
     )
 
@@ -193,15 +194,14 @@ def main():
     # ------------------------------------------------------------------
     # 4  Write the DataFrame to .xml with custom options & stylesheet
     # ------------------------------------------------------------------
-    df.to_xml(
+    dfexpan.to_xml(
         xml_path,
         index=False,
         root_name='body',
         row_name='w',
         attr_cols=['G', 'H', 'norm', 'lemma'],
         elem_cols=['token'],
-        na_rep='',
-        stylesheet='https://raw.githubusercontent.com/cmm2209/VW-XSD/refs/heads/main/pos-to-xml-cleaner.xsl'
+        na_rep=''
     )
 
     print(f"✅  Converted '{txt_path}' → '{xml_path}'")
