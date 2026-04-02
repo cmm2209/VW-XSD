@@ -1,6 +1,6 @@
 import spacy
 from spacy.language import Language
-from spacy.tokens import Doc, Token
+from spacy.tokens import Token
 
 import sys
 import pathlib
@@ -259,7 +259,7 @@ def main():
         
         return doc
 
-    nlp.add_pipe("line_number_parse", first=True)
+    nlp.add_pipe("line_number_parse", before="tagger")
     
     # Process the text with Spacy
     doc = nlp(text)
@@ -272,7 +272,6 @@ def main():
             line_num = token._.line_number or "N/A"
             page_num = token._.page_number or "N/A"
             print(f"Token: '{token.text}' | POS: '{token.pos_}' | Line: {line_num} | Page: {page_num}")
-
 
 if __name__ == '__main__':
     main()
