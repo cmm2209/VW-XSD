@@ -27,98 +27,115 @@ def main():
         sys.exit(2)
 
     # ------------------------------------------------------------------
-    # 2️⃣  Read the .txt file and process line numbers
+    # 2️⃣  Read the .txt file
     # ------------------------------------------------------------------
     with txt_path.open('r', encoding='utf-8') as file:
         original_lines = file.readlines()
     
-    # Track which lines are @ lines
+    # ------------------------------------------------------------------
+    # 3️⃣  Identify @ lines
+    # ------------------------------------------------------------------
     is_at_line = [line.strip().startswith('@') for line in original_lines]
     
-    # First pass: identify which lines have numbers and extract them
-    # Skip @ lines entirely
-    numbered_lines = {}  # Maps line index to extracted number
+    # ------------------------------------------------------------------
+    # 4️⃣  Extract line-starting numbers for validation
+    # ------------------------------------------------------------------
+    line_starting_numbers = {}  # Maps line index to extracted number
     for idx, line in enumerate(original_lines):
         if is_at_line[idx]:
             continue
         match = re.match(r'^\s*(\d{1,6})\s+', line)
         if match:
-            numbered_lines[idx] = int(match.group(1))
+            line_starting_numbers[idx] = int(match.group(1))
     
-    # Second pass: process lines with restart detection
-    # Skip @ lines entirely
-    processed_lines = []
-    line_num = 0  # Track line numbers for non-@ lines
-    numbered_indices = sorted(numbered_lines.keys())
+    # Get sorted list of indices that have line-starting numbers
+    numbered_indices = sorted(line_starting_numbers.keys())
+    
+    # ------------------------------------------------------------------
+    # 5️⃣  Assign line numbers with restart detection
+    # ------------------------------------------------------------------
+    line_numbers = {}  # Maps line index to assigned line number
+    current_line_num = 0
+    i = 0  # Index in numbered_indices
     
     for idx, line in enumerate(original_lines):
-        # Skip @ lines entirely
         if is_at_line[idx]:
-            processed_lines.append(line)
             continue
         
-        line_num += 1
+        current_line_num += 1
+        line_numbers[idx] = current_line_num
         
-        # Check if this line has a number
-        if idx in numbered_lines:
-            extracted_num = numbered_lines[idx]
+        # Check if this line has a starting number
+        if idx in line_starting_numbers:
+            starting_num = line_starting_numbers[idx]
             
-            # Check if this is every 5th line (5, 10, 15, 20, etc.)
-            if line_num % 5 == 0:
-                # Validate the number matches the expected sequence
-                if extracted_num != line_num:
-                    # Unexpected number - check for restart
-                    if extracted_num == 5:
-                        # Scan ahead to find the next numbered line
-                        next_num = None
-                        for next_idx in numbered_indices:
-                            if next_idx > idx:
-                                next_num = numbered_lines[next_idx]
-                                break
-                        
-                        if next_num == 10:
-                            # This is a restart - backtrack 4 lines and restart from 1
-                            # Remove the last 4 lines from processed_lines
-                            for _ in range(4):
-                                if processed_lines:
-                                    processed_lines.pop()
-                            
-                            # Reset line_num to 0 (will become 1 after increment)
-                            line_num = 0
-                            
-                            # Remove the line number from the line
-                            line = re.sub(r'^\s*\d{1,6}\s+', '', line)
-                            processed_lines.append(line)
-                            continue
-                        else:
-                            raise ValueError(f"Error at line {line_num}: expected {line_num}, found {extracted_num}, but next numbered line is {next_num}, not 10")
-                    else:
-                        raise ValueError(f"Error at line {line_num}: expected {line_num}, found {extracted_num}")
+            # Check if the starting number matches the assigned number
+            if starting_num != current_line_num:
+                # Step 5: Check if it's 5
+                if starting_num != 5:
+                    raise ValueError(f"Error at line {current_line_num}: expected {current_line_num}, found {starting_num}")
                 
-                # Remove the line number from the line
-                line = re.sub(r'^\s*\d{1,6}\s+', '', line)
-        else:
-            # This line doesn't have a number
-            # Check if we expected one (every 5th line)
-            if line_num % 5 == 0:
-                # Expected a number but didn't find one - this might be before a restart
-                # Continue processing, the restart detection will handle it
-                pass
-        
-        processed_lines.append(line)
+                # Step 6: Check if the next line-starting number is 10
+                # Find the next numbered line
+                next_idx = None
+                for next_num_idx in numbered_indices:
+                    if next_num_idx > idx:
+                        next_idx = next_num_idx
+                        break
+                
+                if next_idx is None:
+                    raise ValueError(f"Error at line {current_line_num}: found 5 but no following numbered line to check for 10")
+                
+                next_starting_num = line_starting_numbers[next_idx]
+                
+                if next_starting_num != 10:
+                    raise ValueError(f"Error at line {current_line_num}: found 5 but next numbered line has {next_starting_num}, not 10")
+                
+                # Step 7: 5 followed by 10 means restart
+                # Count back 4 lines from the line starting with 5
+                restart_index = idx
+                lines_back = 0
+                while lines_back < 4 and restart_index >= 0:
+                    restart_index -= 1
+                    if not is_at_line[restart_index]:
+                        lines_back += 1
+                
+                # Go back to line 40 (restart the line assigning procedure)
+                # Clear line numbers from restart_index onwards
+                for clear_idx in range(restart_index, len(original_lines)):
+                    if clear_idx in line_numbers:
+                        del line_numbers[clear_idx]
+                
+                # Restart numbering from restart_index
+                current_line_num = 0
+                for re_idx in range(restart_index, idx + 1):
+                    if is_at_line[re_idx]:
+                        continue
+                    current_line_num += 1
+                    line_numbers[re_idx] = current_line_num
+                
+                # Continue from the next line after the 5
+                # The loop will continue naturally from idx+1
     
-    # Third pass: remove @ symbols from all lines
-    final_lines = []
-    for idx, line in enumerate(processed_lines):
+    # ------------------------------------------------------------------
+    # 6️⃣  Clean up the text (remove @ symbols and line numbers)
+    # ------------------------------------------------------------------
+    cleaned_lines = []
+    for idx, line in enumerate(original_lines):
         if is_at_line[idx]:
             # Remove the @ symbol and any whitespace after it
             line = re.sub(r'^\s*@\s*', '', line)
-        final_lines.append(line)
+        else:
+            # Remove line-starting numbers
+            line = re.sub(r'^\s*\d{1,6}\s+', '', line)
+        cleaned_lines.append(line)
     
-    # Join the processed lines back into text
-    text = ''.join(final_lines)
+    # Join the cleaned lines back into text
+    text = ''.join(cleaned_lines)
     
-    # Load Spacy model
+    # ------------------------------------------------------------------
+    # 7️⃣  Load Spacy model and process
+    # ------------------------------------------------------------------
     nlp = spacy.load("de_core_news_sm")
 
     @Language.component("line_number_parse")
@@ -127,23 +144,20 @@ def main():
         char_positions = []
         current_pos = 0
         
-        for line in final_lines:
+        for line in cleaned_lines:
             line_start = current_pos
             line_end = current_pos + len(line)
             char_positions.append((line_start, line_end, line))
             current_pos = line_end
         
-        # Track line numbers for non-@ lines
-        line_num = 0
-        
         # Process each line and assign line numbers to tokens
         for idx, (line_start, line_end, line) in enumerate(char_positions):
             # Skip lines that were originally @ lines
-            # is_at_line is accessible here via closure
             if is_at_line[idx]:
                 continue
             
-            line_num += 1
+            # Get the line number for this line
+            line_num = line_numbers[idx]
             
             # Assign line number to tokens in this line
             for token in doc:
@@ -157,7 +171,9 @@ def main():
     # Process the text with Spacy
     doc = nlp(text)
 
-    # Print tokens with their line numbers
+    # ------------------------------------------------------------------
+    # 8️⃣  Print tokens with their line numbers
+    # ------------------------------------------------------------------
     for sent in doc.sents:
         for token in sent:
             line_num = token._.line_number or "N/A"
