@@ -7,6 +7,7 @@ import pathlib
 import re
 
 Token.set_extension("line_number", default=None, force=True)
+Token.set_extension("page_number", default=None, force=True)
 
 def main():
     # ------------------------------------------------------------------
@@ -33,26 +34,73 @@ def main():
         original_lines = file.readlines()
     
     # ------------------------------------------------------------------
-    # 3️⃣  Identify @ lines
+    # 3️⃣  Identify @# lines and extract page numbers
+    # ------------------------------------------------------------------
+    page_numbers = {}  # Maps line index to page number
+    current_page = None
+    lines_to_delete = []  # Track @# line indices to delete
+    
+    for idx, line in enumerate(original_lines):
+        stripped = line.strip()
+        if stripped.startswith('@#'):
+            # Extract page number from @# line
+            match = re.match(r'^\s*@#\s*(\d+)', line)
+            if match:
+                current_page = int(match.group(1))
+            lines_to_delete.append(idx)
+        else:
+            # Assign current page to this line
+            if current_page is not None:
+                page_numbers[idx] = current_page
+    
+    # Delete @# lines from original_lines (in reverse order to preserve indices)
+    for idx in sorted(lines_to_delete, reverse=True):
+        del original_lines[idx]
+    
+    # Rebuild page_numbers with corrected indices after deletion
+    # Create a mapping from original indices to new indices
+    original_to_new_index = {}
+    new_idx = 0
+    for original_idx in range(len(original_lines) + len(lines_to_delete)):
+        if original_idx not in lines_to_delete:
+            original_to_new_index[original_idx] = new_idx
+            new_idx += 1
+    
+    # Build new page_numbers dictionary with corrected indices
+    new_page_numbers = {}
+    for original_idx, page_num in page_numbers.items():
+        new_idx = original_to_new_index[original_idx]
+        new_page_numbers[new_idx] = page_num
+    
+    page_numbers = new_page_numbers
+    
+    # ------------------------------------------------------------------
+    # 4️⃣  Identify @ lines
     # ------------------------------------------------------------------
     is_at_line = [line.strip().startswith('@') for line in original_lines]
     
     # ------------------------------------------------------------------
-    # 4️⃣  Extract line-starting numbers for validation
+    # 5️⃣  Extract line numbers (at start or end) for validation
     # ------------------------------------------------------------------
     line_starting_numbers = {}  # Maps line index to extracted number
     for idx, line in enumerate(original_lines):
         if is_at_line[idx]:
             continue
+        # Check for number at start of line
         match = re.match(r'^\s*(\d{1,6})\s+', line)
         if match:
             line_starting_numbers[idx] = int(match.group(1))
+        else:
+            # Check for number at end of line
+            match = re.search(r'\s*(\d{1,6})\s*$', line)
+            if match:
+                line_starting_numbers[idx] = int(match.group(1))
     
     # Get sorted list of indices that have line-starting numbers
     numbered_indices = sorted(line_starting_numbers.keys())
     
     # ------------------------------------------------------------------
-    # 5️⃣  Assign line numbers with restart detection
+    # 6️⃣  Assign line numbers with restart detection
     # ------------------------------------------------------------------
     line_numbers = {}  # Maps line index to assigned line number
     current_line_num = 0
@@ -71,54 +119,94 @@ def main():
             
             # Check if the starting number matches the assigned number
             if starting_num != current_line_num:
-                # Step 5: Check if it's 5
-                if starting_num != 5:
+                # Check if it's 5 or 10 (valid restart signals)
+                if starting_num == 5:
+                    # Check if the next line-starting number is 10
+                    next_idx = None
+                    for next_num_idx in numbered_indices:
+                        if next_num_idx > idx:
+                            next_idx = next_num_idx
+                            break
+                    
+                    if next_idx is None:
+                        raise ValueError(f"Error at line {current_line_num}: found 5 but no following numbered line to check for 10")
+                    
+                    next_starting_num = line_starting_numbers[next_idx]
+                    
+                    if next_starting_num != 10:
+                        raise ValueError(f"Error at line {current_line_num}: found 5 but next numbered line has {next_starting_num}, not 10")
+                    
+                    # 5 followed by 10 means restart (every 5 lines)
+                    # Count back 4 lines from the line starting with 5
+                    restart_index = idx
+                    lines_back = 0
+                    while lines_back < 4 and restart_index >= 0:
+                        restart_index -= 1
+                        if not is_at_line[restart_index]:
+                            lines_back += 1
+                    
+                    # Clear line numbers from restart_index onwards
+                    for clear_idx in range(restart_index, len(original_lines)):
+                        if clear_idx in line_numbers:
+                            del line_numbers[clear_idx]
+                    
+                    # Restart numbering from restart_index
+                    current_line_num = 0
+                    for re_idx in range(restart_index, idx + 1):
+                        if is_at_line[re_idx]:
+                            continue
+                        current_line_num += 1
+                        line_numbers[re_idx] = current_line_num
+                    
+                    # Continue from the next line after the 5
+                    # The loop will continue naturally from idx+1
+                    
+                elif starting_num == 10:
+                    # Check if the next line-starting number is 20
+                    next_idx = None
+                    for next_num_idx in numbered_indices:
+                        if next_num_idx > idx:
+                            next_idx = next_num_idx
+                            break
+                    
+                    if next_idx is None:
+                        raise ValueError(f"Error at line {current_line_num}: found 10 but no following numbered line to check for 20")
+                    
+                    next_starting_num = line_starting_numbers[next_idx]
+                    
+                    if next_starting_num != 20:
+                        raise ValueError(f"Error at line {current_line_num}: found 10 but next numbered line has {next_starting_num}, not 20")
+                    
+                    # 10 followed by 20 means restart (every 10 lines)
+                    # Count back 9 lines from the line starting with 10
+                    restart_index = idx
+                    lines_back = 0
+                    while lines_back < 9 and restart_index >= 0:
+                        restart_index -= 1
+                        if not is_at_line[restart_index]:
+                            lines_back += 1
+                    
+                    # Clear line numbers from restart_index onwards
+                    for clear_idx in range(restart_index, len(original_lines)):
+                        if clear_idx in line_numbers:
+                            del line_numbers[clear_idx]
+                    
+                    # Restart numbering from restart_index
+                    current_line_num = 0
+                    for re_idx in range(restart_index, idx + 1):
+                        if is_at_line[re_idx]:
+                            continue
+                        current_line_num += 1
+                        line_numbers[re_idx] = current_line_num
+                    
+                    # Continue from the next line after the 10
+                    # The loop will continue naturally from idx+1
+                    
+                else:
                     raise ValueError(f"Error at line {current_line_num}: expected {current_line_num}, found {starting_num}")
-                
-                # Step 6: Check if the next line-starting number is 10
-                # Find the next numbered line
-                next_idx = None
-                for next_num_idx in numbered_indices:
-                    if next_num_idx > idx:
-                        next_idx = next_num_idx
-                        break
-                
-                if next_idx is None:
-                    raise ValueError(f"Error at line {current_line_num}: found 5 but no following numbered line to check for 10")
-                
-                next_starting_num = line_starting_numbers[next_idx]
-                
-                if next_starting_num != 10:
-                    raise ValueError(f"Error at line {current_line_num}: found 5 but next numbered line has {next_starting_num}, not 10")
-                
-                # Step 7: 5 followed by 10 means restart
-                # Count back 4 lines from the line starting with 5
-                restart_index = idx
-                lines_back = 0
-                while lines_back < 4 and restart_index >= 0:
-                    restart_index -= 1
-                    if not is_at_line[restart_index]:
-                        lines_back += 1
-                
-                # Go back to line 40 (restart the line assigning procedure)
-                # Clear line numbers from restart_index onwards
-                for clear_idx in range(restart_index, len(original_lines)):
-                    if clear_idx in line_numbers:
-                        del line_numbers[clear_idx]
-                
-                # Restart numbering from restart_index
-                current_line_num = 0
-                for re_idx in range(restart_index, idx + 1):
-                    if is_at_line[re_idx]:
-                        continue
-                    current_line_num += 1
-                    line_numbers[re_idx] = current_line_num
-                
-                # Continue from the next line after the 5
-                # The loop will continue naturally from idx+1
     
     # ------------------------------------------------------------------
-    # 6️⃣  Clean up the text (remove @ symbols and line numbers)
+    # 7️⃣  Clean up the text (remove @ symbols and line numbers)
     # ------------------------------------------------------------------
     cleaned_lines = []
     for idx, line in enumerate(original_lines):
@@ -126,15 +214,16 @@ def main():
             # Remove the @ symbol and any whitespace after it
             line = re.sub(r'^\s*@\s*', '', line)
         else:
-            # Remove line-starting numbers
-            line = re.sub(r'^\s*\d{1,6}\s+', '', line)
+            # Remove line numbers from start or end
+            line = re.sub(r'^\s*\d{1,6}\s+', '', line)  # Remove from start
+            line = re.sub(r'\s*\d{1,6}\s*$', '', line)  # Remove from end
         cleaned_lines.append(line)
     
     # Join the cleaned lines back into text
     text = ''.join(cleaned_lines)
     
     # ------------------------------------------------------------------
-    # 7️⃣  Load Spacy model and process
+    # 8️⃣  Load Spacy model and process
     # ------------------------------------------------------------------
     nlp = spacy.load("de_core_news_sm")
 
@@ -150,7 +239,7 @@ def main():
             char_positions.append((line_start, line_end, line))
             current_pos = line_end
         
-        # Process each line and assign line numbers to tokens
+        # Process each line and assign line numbers and page numbers to tokens
         for idx, (line_start, line_end, line) in enumerate(char_positions):
             # Skip lines that were originally @ lines
             if is_at_line[idx]:
@@ -159,10 +248,14 @@ def main():
             # Get the line number for this line
             line_num = line_numbers[idx]
             
-            # Assign line number to tokens in this line
+            # Get the page number for this line (if available)
+            page_num = page_numbers.get(idx)
+            
+            # Assign line number and page number to tokens in this line
             for token in doc:
                 if line_start <= token.idx < line_end:
                     token._.line_number = line_num
+                    token._.page_number = page_num
         
         return doc
 
@@ -172,12 +265,13 @@ def main():
     doc = nlp(text)
 
     # ------------------------------------------------------------------
-    # 8️⃣  Print tokens with their line numbers
+    # 9️⃣  Print tokens with their line numbers and page numbers
     # ------------------------------------------------------------------
     for sent in doc.sents:
         for token in sent:
             line_num = token._.line_number or "N/A"
-            print(f"Token: '{token.text}' | POS: '{token.pos_}' | Line: {line_num}")
+            page_num = token._.page_number or "N/A"
+            print(f"Token: '{token.text}' | POS: '{token.pos_}' | Line: {line_num} | Page: {page_num}")
 
 
 if __name__ == '__main__':

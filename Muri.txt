@@ -1,4 +1,4 @@
-@<p n="273"/>
+@#273
 @Das Osterspiel von Muri
 @I.
 @Primus Custos:
@@ -24,7 +24,7 @@ Das tvon wir, herre, wissint das!
 15 Nv cherent och, ir herren, dar
 dar vmbe das ir nement war
 wie das grap bihvetet si:
-@<p n="274"/>
+@#274
 so sint ir von sorgen vri.
 das rat ich vf die trivwe min.
 @Primus Judæus:
@@ -55,7 +55,7 @@ er ist vns also bivoln,
 @Pilatus ad [Judæos:]
 Virnent alle min gebot:
 ich gebivte vch ane spot,
-@<p n="275"/>
+@#275
 mannen vnd wiben gar,
 das ir frvo choment har
 45 so das ir nicht min hulde
@@ -84,7 +84,7 @@ hortest du den tonrenslac?
 Ih habe oh gehoret
 einen starchen tonrenchlahc:
 mir waz als er uf minen nahc
-@<p n="276"/>
+@#276
 @[Pilatus:]
 Cumpreht, hastu mih vernomen?
 ga hin vnd heiz si har chomen!
@@ -114,7 +114,7 @@ vnd sin endrunnen mit not,
 vnd wie uns geshehen ist,
 20 daz sage ih dir in churcer vrist:
 do wir hinaht lagen,
-@<p n="277"/>
+@#277
 als wir des grabes phlagen
 mit vil grozem vlize,
 do cham en engel wize,
@@ -144,7 +144,7 @@ du heiz vns marteren cehant,
 @Tertius Custos:
 Here, ez ist en warheit
 gar ane lougen!
-@<p n="278"/>
+@#278
 @Quartus Custos:
 Ih sah mit minen ogen
 Ihesum von dem grabe vf stan
@@ -175,7 +175,7 @@ zwencic phunde cellen
 Swie du mir das geben wilt,
 wie cleine danne mih beuilt,
 daz ih dir gibe mit gewiht
-@<p n="279"/>
+@#279
 goldes (des enlaze ih niht)
 5 zwencic marchen swere.
 @Pilatus:
