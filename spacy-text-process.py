@@ -1,6 +1,8 @@
 import spacy
 from spacy.language import Language
-from spacy.tokens import Token
+from spacy.tokens import Token, Doc
+# from transformers import PreTrainedTokenizerFast
+from tokenizers import Tokenizer
 
 import sys
 import pathlib
@@ -8,6 +10,33 @@ import re
 
 Token.set_extension("line_number", default=None, force=True)
 Token.set_extension("page_number", default=None, force=True)
+# new_tokenizer = Tokenizer.from_file("BPEtokenizer.json")
+
+# wrapped_tokenizer = PreTrainedTokenizerFast(
+#     tokenizer_object=new_tokenizer,
+#     unk_token="[UNK]",
+#)
+
+
+# class BPETokenizer:
+#    def __init__(self, vocab):
+#        self.vocab = vocab
+#        self._tokenizer = wrapped_tokenizer
+
+#    def __call__(self, text):
+#        tokens = self._tokenizer.encode(text)
+#        words = []
+#        spaces = []
+#        for i, (text, (start, end)) in enumerate(zip(tokens.tokens, tokens.offsets)):
+#            words.append(text)
+#            if i < len(tokens.tokens) - 1:
+#                # If next start != current end we assume a space in between
+#                next_start, next_end = tokens.offsets[i + 1]
+#                spaces.append(next_start > end)
+#            else:
+#                spaces.append(True)
+#        return Doc(self.vocab, words=words, spaces=spaces)
+
 
 def main():
     # ------------------------------------------------------------------
@@ -226,6 +255,7 @@ def main():
     # 8️⃣  Load Spacy model and process
     # ------------------------------------------------------------------
     nlp = spacy.load("de_core_news_sm")
+    # nlp.tokenizer = BPETokenizer(nlp.vocab)
 
     @Language.component("line_number_parse")
     def line_number_parser(doc):
