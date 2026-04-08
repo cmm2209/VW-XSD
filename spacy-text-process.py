@@ -7,9 +7,11 @@ from tokenizers import Tokenizer
 import sys
 import pathlib
 import re
+import unicodedata
 
 Token.set_extension("line_number", default=None, force=True)
 Token.set_extension("page_number", default=None, force=True)
+Doc.set_extension("token_offsets", default=None, force=True)
 
 new_tokenizer = Tokenizer.from_file("BERTtokenizer.json")
 
@@ -23,11 +25,16 @@ class BertTokenizer:
         self._tokenizer.no_truncation()
 
     def __call__(self, text):
+        original_text = text
+        text = unicodedata.normalize("NFC", text)
+        text = text.lower()
         encoding = self._tokenizer.encode(text)
         tokens = encoding.tokens
         offsets = encoding.offsets
         if not tokens:
-            return Doc(self.vocab, words=[], spaces=[])
+            doc = Doc(self.vocab, words=[], spaces=[])
+            doc._.token_offsets = []
+            return doc
         
         filtered = [
             (tok, start, end)
@@ -36,19 +43,26 @@ class BertTokenizer:
         ]
 
         if not filtered:
-            return Doc(self.vocab, words=[], spaces=[])
+            doc = Doc(self.vocab, words=[], spaces=[])
+            doc._.token_offsets = []
+            return doc
+            
         
         words = []
         spaces = []
+        original_offsets = []
 
         for i, (tok, start, end) in enumerate(filtered):
             words.append(tok)
+            original_offsets.append((start, end))
             if i < len(filtered) - 1:
                 next_start = filtered[i + 1][1]
                 spaces.append(next_start > end)
             else:
                 spaces.append(end < len(text) and text[end] == " ")
-        return Doc(self.vocab, words=words, spaces=spaces)
+        doc = Doc(self.vocab, words=words, spaces=spaces)
+        doc._.token_offsets = original_offsets
+        return doc
 
 
 def main():
@@ -273,35 +287,40 @@ def main():
     @Language.component("line_number_parse")
     def line_number_parser(doc):
         # Track character positions of each line
+        normalized_lines = [
+            unicodedata.normalize("NFC", line).lower() 
+            for line in cleaned_lines
+        ]
+
         char_positions = []
         current_pos = 0
         
-        for line in cleaned_lines:
+        for line in normalized_lines:
             line_start = current_pos
             line_end = current_pos + len(line)
-            char_positions.append((line_start, line_end, line))
+            char_positions.append((line_start, line_end))
             current_pos = line_end
         
-        # Process each line and assign line numbers and page numbers to tokens
-        for idx, (line_start, line_end, line) in enumerate(char_positions):
-            # Skip lines that were originally @ lines
-            if is_at_line[idx]:
-                continue
-            
-            # Get the line number for this line
-            line_num = line_numbers[idx]
-            
-            # Get the page number for this line (if available)
-            page_num = page_numbers.get(idx)
-            
-            # Assign line number and page number to tokens in this line
-            for token in doc:
-                if line_start <= token.idx < line_end:
-                    token._.line_number = line_num
-                    token._.page_number = page_num
-        
-        return doc
+        token_offsets = doc._.token_offsets
+        use_custom_offsets = token_offsets is not None and len(token_offsets) == len(doc)
 
+        for i, token in enumerate(doc):
+            if use_custom_offsets:
+                tok_start = token_offsets[i][0]
+            else:
+                tok_start = token.idx
+
+            # Find which line this token belongs to
+            for idx, (line_start, line_end) in enumerate(char_positions):
+                if line_start <= tok_start < line_end:
+                    # Always assign the page number
+                    token._.page_number = page_numbers.get(idx)
+                    # Only assign line number for non-@ lines
+                    if not is_at_line[idx]:
+                        token._.line_number = line_numbers.get(idx)
+                    break
+
+        return doc
     nlp.add_pipe("line_number_parse", before="tagger")
     
     # Process the text with Spacy
