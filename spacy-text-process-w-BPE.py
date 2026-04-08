@@ -1,7 +1,7 @@
 import spacy
 from spacy.language import Language
 from spacy.tokens import Token, Doc
-from transformers import BertTokenizerFast
+from transformers import PreTrainedTokenizerFast
 from tokenizers import Tokenizer
 
 import sys
@@ -10,12 +10,15 @@ import re
 
 Token.set_extension("line_number", default=None, force=True)
 Token.set_extension("page_number", default=None, force=True)
+new_tokenizer = Tokenizer.from_file("BPEtokenizer.json")
 
-new_tokenizer = Tokenizer.from_file("BERTtokenizer.json")
+wrapped_tokenizer = PreTrainedTokenizerFast(
+     tokenizer_object=new_tokenizer,
+     unk_token="[UNK]",
+)
 
-class BertTokenizer:
-    SPECIAL_TOKENS = {"[CLS]", "[SEP]", "[PAD]", "[UNK]", "[MASK]"}
 
+class BPETokenizer:
     def __init__(self, vocab, tokenizer):
         self.vocab = vocab
         self._tokenizer = tokenizer
@@ -26,25 +29,17 @@ class BertTokenizer:
         encoding = self._tokenizer.encode(text)
         tokens = encoding.tokens
         offsets = encoding.offsets
-        if not tokens:
-            return Doc(self.vocab, words=[], spaces=[])
-        
-        filtered = [
-            (tok, start, end)
-            for tok, (start, end) in zip(tokens, offsets)
-            if tok not in self.SPECIAL_TOKENS and (start, end) != (0, 0)
-        ]
 
-        if not filtered:
+        if not tokens:
             return Doc(self.vocab, words=[], spaces=[])
         
         words = []
         spaces = []
-
-        for i, (tok, start, end) in enumerate(filtered):
+        for i, (tok, (start, end)) in enumerate(zip(tokens, offsets)):
             words.append(tok)
-            if i < len(filtered) - 1:
-                next_start = filtered[i + 1][1]
+            
+            if i < len(tokens) - 1:
+                next_start = offsets[i + 1][0]
                 spaces.append(next_start > end)
             else:
                 spaces.append(end < len(text) and text[end] == " ")
@@ -268,7 +263,7 @@ def main():
     # 8️⃣  Load Spacy model and process
     # ------------------------------------------------------------------
     nlp = spacy.load("de_core_news_sm")
-    nlp.tokenizer = BertTokenizer(nlp.vocab, new_tokenizer)
+    nlp.tokenizer = BPETokenizer(nlp.vocab, new_tokenizer)
 
     @Language.component("line_number_parse")
     def line_number_parser(doc):
