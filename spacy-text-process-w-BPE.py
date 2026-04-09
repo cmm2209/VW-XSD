@@ -3,6 +3,7 @@ from spacy.language import Language
 from spacy.tokens import Token, Doc
 from transformers import PreTrainedTokenizerFast
 from tokenizers import Tokenizer
+from text_replacements import load_replacements, apply_replacements
 
 import sys
 import pathlib
@@ -268,6 +269,10 @@ def main():
             line = re.sub(r'^\s*\d{1,6}\s+', '', line)  # Remove from start
             line = re.sub(r'\s*\d{1,6}\s*$', '', line)  # Remove from end
         cleaned_lines.append(line)
+    
+    # Replace special characters using custom replacements list
+    replacements = load_replacements("replacements.json")
+    cleaned_lines = [apply_replacements(line, replacements) for line in cleaned_lines]
     
     # Join the cleaned lines back into text
     text = ''.join(cleaned_lines)
