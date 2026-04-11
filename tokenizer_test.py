@@ -1,7 +1,10 @@
 from tokenizers import Tokenizer
+import sys
+
+tokenizer_file = sys.argv[1]
 
 # Load your tokenizer
-tokenizer = Tokenizer.from_file("BERTtokenizer.json")
+tokenizer = Tokenizer.from_file(tokenizer_file)
 
 # Load your sample text
 with open("Donaueschinger_passionsspiel.txt", "r", encoding="utf-8") as f:
