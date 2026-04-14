@@ -17,7 +17,8 @@ def get_training_corpus():
 tokenizer = Tokenizer(models.BPE())
 tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
 
-trainer = trainers.BpeTrainer(vocab_size=25000, special_tokens=["<unk>"])
+special_tokens = ["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]
+trainer = trainers.BpeTrainer(vocab_size=25000, special_tokens=special_tokens)
 tokenizer.train_from_iterator(get_training_corpus(), trainer=trainer)
 tokenizer.post_processor = processors.ByteLevel(trim_offsets=False)
 tokenizer.decoder = decoders.ByteLevel()
