@@ -80,7 +80,7 @@ thesaurus = {
         "DDART": "POS=DET|PronType=Art|Definite=Def",
         "DDA":   "POS=DET|PronType=Dem",
         "DDS":   "POS=PRON|PronType=Dem",
-        „DRELS": "POS=PRON|PronType=Rel",
+        "DRELS": "POS=PRON|PronType=Rel",
         "DPOSA": "POS=DET|PronType=Prs|Poss=Yes",
         "DPOSD": "POS=PRON|PronType=Prs|Poss=Yes",
         "DPOSS": "POS=NOUN|Poss=Yes",
@@ -139,9 +139,9 @@ thesaurus = {
         "3": "Person=3",
 
         # Degree
-        "Pos": "Degree=Pos"
-        "Cmp": "Degree=Cmp"
-        "Sup": "Degree=Sup"
+        "Pos": "Degree=Pos",
+        "Cmp": "Degree=Cmp",
+        "Sup": "Degree=Sup",
 
         # Strong and Weak
         "st": "*",
