@@ -158,125 +158,119 @@ def main():
     # ------------------------------------------------------------------
     # 6️⃣  Assign line numbers with restart detection
     # ------------------------------------------------------------------
-    line_numbers = {}       # Maps line index → assigned line number
-    last_assigned_num = 0   # Most recently assigned number (explicit or inferred)
+    line_numbers = {}
+    last_assigned_num = 0
 
     for idx, line in enumerate(original_lines):
         if is_at_line[idx]:
             continue
 
-        # ── Determine the raw number for this line ───────────────────
-        # If the line carries an explicit number, use it.
-        # Otherwise infer "previous + 1" (gap-filling for skipped numbers).
         if idx in line_starting_numbers:
             raw_num = line_starting_numbers[idx]
+
+            # ── Restart detection ─────────────────────────────────────
+            # Only attempt a restart if the number is unexpected (i.e.
+            # does not equal last_assigned_num + 1) AND is 5 or 10.
+            expected_num = last_assigned_num + 1
+            is_unexpected = raw_num != expected_num
+            is_restart_candidate = raw_num in (5, 10)
+
+            if is_unexpected and is_restart_candidate:
+                if raw_num == 5:
+                    # Confirm: next explicit number must be 10
+                    next_idx = next(
+                        (ni for ni in sorted(line_starting_numbers.keys()) if ni > idx),
+                        None
+                    )
+                    if next_idx is None:
+                        raise ValueError(
+                            f"Line index {idx}: found unexpected '5' but no "
+                            f"following numbered line to confirm restart (expected 10)."
+                        )
+                    if line_starting_numbers[next_idx] != 10:
+                        raise ValueError(
+                            f"Line index {idx}: found unexpected '5' but the next "
+                            f"numbered line has {line_starting_numbers[next_idx]}, "
+                            f"not 10 — cannot confirm restart."
+                        )
+
+                    # Walk back 4 non-@ lines to find where line 1 starts
+                    restart_index = idx
+                    lines_back = 0
+                    while lines_back < 4 and restart_index > 0:
+                        restart_index -= 1
+                        if not is_at_line[restart_index]:
+                            lines_back += 1
+
+                    # Clear numbers already assigned from restart_index onward
+                    for clear_idx in range(restart_index, len(original_lines)):
+                        line_numbers.pop(clear_idx, None)
+
+                    # Re-number from restart_index up to and including idx
+                    current_line_num = 0
+                    for re_idx in range(restart_index, idx + 1):
+                        if is_at_line[re_idx]:
+                            continue
+                        current_line_num += 1
+                        line_numbers[re_idx] = current_line_num
+
+                    last_assigned_num = current_line_num  # == 5
+                    continue
+
+                elif raw_num == 10:
+                    # Confirm: next explicit number must be 20
+                    next_idx = next(
+                        (ni for ni in sorted(line_starting_numbers.keys()) if ni > idx),
+                        None
+                    )
+                    if next_idx is None:
+                        raise ValueError(
+                            f"Line index {idx}: found unexpected '10' but no "
+                            f"following numbered line to confirm restart (expected 20)."
+                        )
+                    if line_starting_numbers[next_idx] != 20:
+                        raise ValueError(
+                            f"Line index {idx}: found unexpected '10' but the next "
+                            f"numbered line has {line_starting_numbers[next_idx]}, "
+                            f"not 20 — cannot confirm restart."
+                        )
+
+                    # Walk back 9 non-@ lines to find where line 1 starts
+                    restart_index = idx
+                    lines_back = 0
+                    while lines_back < 9 and restart_index > 0:
+                        restart_index -= 1
+                        if not is_at_line[restart_index]:
+                            lines_back += 1
+
+                    # Clear numbers already assigned from restart_index onward
+                    for clear_idx in range(restart_index, len(original_lines)):
+                        line_numbers.pop(clear_idx, None)
+
+                    # Re-number from restart_index up to and including idx
+                    current_line_num = 0
+                    for re_idx in range(restart_index, idx + 1):
+                        if is_at_line[re_idx]:
+                            continue
+                        current_line_num += 1
+                        line_numbers[re_idx] = current_line_num
+
+                    last_assigned_num = current_line_num  # == 10
+                    continue
+
+            # ── Normal explicit number ────────────────────────────────
+            # Unexpected but not a restart candidate, or expected: just
+            # trust the number as written and assign it directly.
+            line_numbers[idx] = raw_num
+            last_assigned_num = raw_num
+
         else:
-            raw_num = last_assigned_num + 1
+            # ── Unnumbered line ───────────────────────────────────────
+            # No explicit number: infer as previous + 1
+            inferred_num = last_assigned_num + 1
+            line_numbers[idx] = inferred_num
+            last_assigned_num = inferred_num
 
-        # ── Restart detection ─────────────────────────────────────────
-        # A restart is only possible when raw_num is LESS than or equal
-        # to last_assigned_num (the sequence has gone backwards).
-        # Skipping forward (raw_num > last_assigned_num + 1) is valid
-        # and does NOT indicate a restart.
-
-        if raw_num <= last_assigned_num:
-            # The sequence has gone backwards: could be a restart at 5 or 10.
-            if raw_num == 5:
-                # Confirm by checking the next explicit number is 10.
-                next_idx = next(
-                    (ni for ni in sorted(line_starting_numbers.keys()) if ni > idx),
-                    None
-                )
-                if next_idx is None:
-                    raise ValueError(
-                        f"Line index {idx}: found explicit '5' but no "
-                        f"following numbered line to confirm restart (expected 10)."
-                    )
-                if line_starting_numbers[next_idx] != 10:
-                    raise ValueError(
-                        f"Line index {idx}: found explicit '5' but the next "
-                        f"numbered line has {line_starting_numbers[next_idx]}, "
-                        f"not 10 — cannot confirm restart."
-                    )
-
-                # Walk back 4 non-@ lines to find where line 1 of the new
-                # sequence starts.
-                restart_index = idx
-                lines_back = 0
-                while lines_back < 4 and restart_index > 0:
-                    restart_index -= 1
-                    if not is_at_line[restart_index]:
-                        lines_back += 1
-
-                # Erase numbers already assigned from restart_index onward.
-                for clear_idx in range(restart_index, len(original_lines)):
-                    line_numbers.pop(clear_idx, None)
-
-                # Re-number from restart_index up to and including idx.
-                current_line_num = 0
-                for re_idx in range(restart_index, idx + 1):
-                    if is_at_line[re_idx]:
-                        continue
-                    current_line_num += 1
-                    line_numbers[re_idx] = current_line_num
-
-                last_assigned_num = current_line_num  # == 5 after this block
-                continue  # Skip the normal assignment below.
-
-            elif raw_num == 10:
-                # Confirm by checking the next explicit number is 20.
-                next_idx = next(
-                    (ni for ni in sorted(line_starting_numbers.keys()) if ni > idx),
-                    None
-                )
-                if next_idx is None:
-                    raise ValueError(
-                        f"Line index {idx}: found explicit '10' but no "
-                        f"following numbered line to confirm restart (expected 20)."
-                    )
-                if line_starting_numbers[next_idx] != 20:
-                    raise ValueError(
-                        f"Line index {idx}: found explicit '10' but the next "
-                        f"numbered line has {line_starting_numbers[next_idx]}, "
-                        f"not 20 — cannot confirm restart."
-                    )
-
-                # Walk back 9 non-@ lines to find where line 1 starts.
-                restart_index = idx
-                lines_back = 0
-                while lines_back < 9 and restart_index > 0:
-                    restart_index -= 1
-                    if not is_at_line[restart_index]:
-                        lines_back += 1
-
-                for clear_idx in range(restart_index, len(original_lines)):
-                    line_numbers.pop(clear_idx, None)
-
-                current_line_num = 0
-                for re_idx in range(restart_index, idx + 1):
-                    if is_at_line[re_idx]:
-                        continue
-                    current_line_num += 1
-                    line_numbers[re_idx] = current_line_num
-
-                last_assigned_num = current_line_num  # == 10 after this block
-                continue  # Skip the normal assignment below.
-
-            else:
-                # Sequence went backwards to something other than 5 or 10:
-                # this is a genuine error in the source data.
-                raise ValueError(
-                    f"Line index {idx}: sequence went backwards — "
-                    f"last assigned {last_assigned_num}, found {raw_num}. "
-                    f"(Not a recognised restart signal.)"
-                )
-
-        # ── Normal assignment (forward or exact, no restart) ─────────
-        # Covers: raw_num == last_assigned_num + 1  (sequential)
-        #     and raw_num >  last_assigned_num + 1  (forward skip — accepted)
-        line_numbers[idx] = raw_num
-        last_assigned_num = raw_num
-    
     # ------------------------------------------------------------------
     # 7️⃣  Clean up the text (remove @ symbols and line numbers)
     # ------------------------------------------------------------------
