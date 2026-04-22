@@ -16,8 +16,8 @@ def get_training_corpus():
         yield dataset[i : i + 500]["text"]
 
 tokenizer = Tokenizer(models.WordPiece(unk_token="[UNK]"))
-tokenizer.normalizer = normalizers.Sequence([normalizers.NFD(), normalizers.Lowercase()])
-tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+tokenizer.normalizer = normalizers.Sequence([normalizers.NFC(),normalizers.Lowercase()])
+tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
 
 special_tokens = ["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]
 trainer = trainers.WordPieceTrainer(vocab_size=30000, special_tokens=special_tokens)
