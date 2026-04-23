@@ -12,15 +12,15 @@ from tokenizers import (
 dataset = load_dataset("text", data_files="MHDtexts.txt", encoding="utf-8", split="train")
 
 def get_training_corpus():
-    for i in range(0, len(dataset), 500):
-        yield dataset[i : i + 500]["text"]
+    for i in range(0, len(dataset), 512):
+        yield dataset[i : i + 512]["text"]
 
 tokenizer = Tokenizer(models.WordPiece(unk_token="[UNK]"))
 tokenizer.normalizer = normalizers.Sequence([normalizers.NFC(),normalizers.Lowercase()])
 tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
 
 special_tokens = ["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]
-trainer = trainers.WordPieceTrainer(vocab_size=30000, special_tokens=special_tokens)
+trainer = trainers.WordPieceTrainer(vocab_size=31787, special_tokens=special_tokens)
 tokenizer.train_from_iterator(get_training_corpus(), trainer=trainer)
 
 cls_token_id = tokenizer.token_to_id("[CLS]")
