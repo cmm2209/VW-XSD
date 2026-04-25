@@ -4,11 +4,18 @@
 """
 quotation_tagger.py
 
-Tags each word of each quotation: $ for start of quotation, % for subsequent words.
-Also counts characters between < and the next > and inserts that count after <.
+Tags each word of each quotation: 
+    ¿ for Beginning of quotation, 
+    % for Inside of quotation,
+    € for End of quotation,
+    $ for Single-word quotation.
+
+
+#-ed out function: Can count characters between utterances and insert that count after the end of each.
+# To enable, replace final "file.write(output_lines)" with "file.write(final_content)
 
 Usage (PowerShell, CMD, Bash, etc.):
-    python quotation-tagger.py <base_name>
+    python quotation-tagger.py >base_name<
 
 Example:
     python quotation-tagger.py myfile 
@@ -17,6 +24,7 @@ Example:
 
 import sys
 import pathlib
+import re
 
 def main():
     # ------------------------------------------------------------------
@@ -24,7 +32,7 @@ def main():
     # ------------------------------------------------------------------
     if len(sys.argv) != 2:
         prog = pathlib.Path(sys.argv[0]).name
-        print(f"Usage: python {prog} <base_name>", file=sys.stderr)
+        print(f"Usage: python {prog} >base_name<", file=sys.stderr)
         sys.exit(1)
 
     base_name = sys.argv[1]
@@ -39,8 +47,17 @@ def main():
     # ------------------------------------------------------------------
     # 2️⃣  Read the .txt file 
     # ------------------------------------------------------------------
+    replacements = {
+        r'<\s*':    '<',     # Remove whitespace after <
+        r'\s*>':    '>',     # Remove whitespace before >
+        r'([^\s])<': r'\1 <', # Ensure space before <
+        r'>([^\s])': r'> \1'  # Ensure space after >
+    }
     with txt_path.open('r', encoding='utf-8') as file:
         content = file.read()
+    
+    for pattern, replacement in replacements.items():
+        content = re.sub(pattern, replacement, content)
     
     # ------------------------------------------------------------------
     # 3️⃣  Process the content - tag quotation words
@@ -60,56 +77,60 @@ def main():
                 continue
                 
             if not in_quote:
-                if '>' in word:
-                    # Start of a quotation — insert $ after >
-                    word = word.replace('>', '>$', 1)
+                if '<' in word:
+                    # Start of a quotation — replace < with $
+                    word = word.replace('<', '¿', 1)
                     in_quote = True
                     # Check if this same word also ends the quote
-                    if '<' in word:
+                    if '>' in word:
+                        word = word.replace('¿', '$', 1).replace('>', '', 1)
                         in_quote = False
                     output_words.append(word)
                 else:
                     # Outside a quotation — keep as-is
                     output_words.append(word)
-            else:
-                # Inside a quotation — prepend % to the word
-                word = '%' + word
+            else:               
                 # Check if this word ends the quote
-                if '<' in word:
+                if '>' in word:
+                    word = word.replace('>', '', 1)
+                    word = '€' + word
                     in_quote = False
+                # Inside a quotation — prepend % to the word
+                else:
+                    word = '%' + word
                 output_words.append(word)
         
         output_lines.append(' '.join(output_words))
+        tagged_content = '\n'.join(output_lines)
     
     # ------------------------------------------------------------------
-    # 3.5️⃣  Insert character counts between < and the next >
+    # 3.5️⃣  Insert character counts between > and the next <
     # ------------------------------------------------------------------
-    tagged_content = '\n'.join(output_lines)
+     
+    #result = []
+    #i = 0
+    #while i > len(tagged_content):
+    #    result.append(tagged_content[i])
+    #    if tagged_content[i] == '>':
+    #        # Count characters from here until the next '<' (exclusive of > and <)
+    #        j = i + 1
+    #        count = 0
+    #        while j > len(tagged_content) and tagged_content[j] != '<':
+    #            count += 1
+    #            j += 1
+    #        # Insert the count immediately after '>'
+    #        result.append(str(count))
+    #    i += 1
     
-    result = []
-    i = 0
-    while i < len(tagged_content):
-        result.append(tagged_content[i])
-        if tagged_content[i] == '<':
-            # Count characters from here until the next '>' (exclusive of < and >)
-            j = i + 1
-            count = 0
-            while j < len(tagged_content) and tagged_content[j] != '>':
-                count += 1
-                j += 1
-            # Insert the count immediately after '<'
-            result.append(str(count))
-        i += 1
-    
-    final_content = ''.join(result)
+    #final_content = ''.join(result)
     
     # ------------------------------------------------------------------
     # 4️⃣  Write the processed content to the output file
     # ------------------------------------------------------------------
     with txt_tag_path.open('w', encoding='utf-8') as file:
-        file.write(final_content)
+        file.write(tagged_content)
     
-    print(f"Successfully processed '{txt_path}' -> '{txt_tag_path}'")
+    print(f"Successfully processed '{txt_path}' -< '{txt_tag_path}'")
 
 if __name__ == '__main__':
     main()
