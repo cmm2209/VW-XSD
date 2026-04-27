@@ -2,7 +2,7 @@ import spacy
 from spacy.language import Language
 from spacy.tokens import Token, Doc
 from tokenizers import Tokenizer
-from text_replacements import load_replacements, apply_replacements 
+from text_replacements import load_replacements, apply_replacements_with_mapping
 
 import sys
 import pathlib
@@ -11,6 +11,8 @@ import unicodedata
 
 Token.set_extension("line_number", default=None, force=True)
 Token.set_extension("page_number", default=None, force=True)
+Token.set_extension("direct_speech", default=None, force=True)
+Token.set_extension("original_form", default=None, force=True)
 Doc.set_extension("token_offsets", default=None, force=True)
 
 new_tokenizer = Tokenizer.from_file("BERTtokenizer.json")
@@ -25,29 +27,31 @@ class BertTokenizer:
         self._tokenizer.no_truncation()
 
     def __call__(self, text):
-        original_text = text
-        text = unicodedata.normalize("NFC", text)
-        text = text.lower()
-        encoding = self._tokenizer.encode(text)
+        # Apply replacements to get the normalized form for encoding
+        # (text has already had replacements applied; we receive it ready to encode)
+        normalized = unicodedata.normalize("NFC", text).lower()
+        encoding = self._tokenizer.encode(normalized)
         tokens = encoding.tokens
         offsets = encoding.offsets
+
         if not tokens:
             doc = Doc(self.vocab, words=[], spaces=[])
             doc._.token_offsets = []
             return doc
-        
+
         filtered = [
-            (tok, start, end)
+            (('##' if tok.startswith('##') else '') + text[start:end], start, end)
             for tok, (start, end) in zip(tokens, offsets)
-            if tok not in self.SPECIAL_TOKENS and (start, end) != (0, 0)
+            if tok not in self.SPECIAL_TOKENS
+            and (start, end) != (0, 0)
+            and text[start:end].strip() != ''
         ]
 
         if not filtered:
             doc = Doc(self.vocab, words=[], spaces=[])
             doc._.token_offsets = []
             return doc
-            
-        
+
         words = []
         spaces = []
         original_offsets = []
@@ -59,11 +63,11 @@ class BertTokenizer:
                 next_start = filtered[i + 1][1]
                 spaces.append(next_start > end)
             else:
-                spaces.append(end < len(text) and text[end] == " ")
+                spaces.append(end < len(normalized) and normalized[end] == " ")
+
         doc = Doc(self.vocab, words=words, spaces=spaces)
         doc._.token_offsets = original_offsets
         return doc
-
 
 def main():
     # ------------------------------------------------------------------
@@ -277,44 +281,88 @@ def main():
     cleaned_lines = []
     for idx, line in enumerate(original_lines):
         if is_at_line[idx]:
-            # Remove the @ symbol and any whitespace after it
             line = re.sub(r'^\s*@\s*', '', line)
         else:
-            # Remove line numbers from start or end
-            line = re.sub(r'^\s*\d{1,6}\s+', '', line)  # Remove from start
-            line = re.sub(r'\s*\d{1,6}\s*$', '', line)  # Remove from end
+            line = re.sub(r'^\s*\d{1,6}\s+', '', line)
+            line = re.sub(r'\s*\d{1,6}\s*$', '', line)
         cleaned_lines.append(line)
-    
-    # Replace special characters using custom replacements list
-    replacements = load_replacements("replacements.json")
-    cleaned_lines = [apply_replacements(line, replacements) for line in cleaned_lines]
 
-    # Join the cleaned lines back into text
     text = ''.join(cleaned_lines)
-    
+
     # ------------------------------------------------------------------
-    # 8️⃣  Load Spacy model and process
+    # 8️⃣  Split by spaces, assign direct speech and original_form,
+    #       strip markers, then apply replacements
+    # ------------------------------------------------------------------
+    direct_speech_tags = {}  # keyed by char offset in final text
+    original_forms = {}      # keyed by char offset in final text
+
+    # We build the final text in two passes:
+    # First pass: strip direct speech markers, record tags and original forms
+    stripped_words = []
+    current_pos = 0
+
+    for word in re.split(r'(\s)', text):
+        if not word:
+            continue
+        if word.startswith('¿'):
+            tag = "Beginning"
+            base_word = word[1:]
+        elif word.startswith('%'):
+            tag = "Inside"
+            base_word = word[1:]
+        elif word.startswith('€'):
+            tag = "End"
+            base_word = word[1:]
+        elif word.startswith('$'):
+            tag = "Singleton"
+            base_word = word[1:]
+        else:
+            tag = "Outside"
+            base_word = word
+
+        # Record the original form (before replacements) at this position
+        # We don't know the final offset yet (replacements may shift it),
+        # so we store by word index and resolve offsets after replacements
+        stripped_words.append((base_word, tag, base_word))  # (word, tag, original_form)
+        current_pos += len(base_word)
+
+    # Second pass: apply replacements to each word individually,
+    # then build the final text and record offsets
+    replacements = load_replacements("replacements.json")
+    final_words = []
+    current_pos = 0
+
+    for base_word, tag, original_form in stripped_words:
+        replaced_word, _ = apply_replacements_with_mapping(base_word, replacements)
+        # Record the offset of this word in the final text
+        direct_speech_tags[current_pos] = tag
+        original_forms[current_pos] = original_form
+        final_words.append(replaced_word)
+        current_pos += len(replaced_word)
+
+    text = ''.join(final_words)
+
+    # ------------------------------------------------------------------
+    # 9️⃣  Load Spacy model and process
     # ------------------------------------------------------------------
     nlp = spacy.load("de_core_news_sm")
     nlp.tokenizer = BertTokenizer(nlp.vocab, new_tokenizer)
 
-    @Language.component("line_number_parse")
-    def line_number_parser(doc):
-        # Track character positions of each line
+    @Language.component("attribute_tagging")
+    def attribute_tagger(doc):
         normalized_lines = [
-            unicodedata.normalize("NFC", line).lower() 
+            unicodedata.normalize("NFC", line).lower()
             for line in cleaned_lines
         ]
 
         char_positions = []
         current_pos = 0
-        
         for line in normalized_lines:
             line_start = current_pos
             line_end = current_pos + len(line)
             char_positions.append((line_start, line_end))
             current_pos = line_end
-        
+
         token_offsets = doc._.token_offsets
         use_custom_offsets = token_offsets is not None and len(token_offsets) == len(doc)
 
@@ -324,30 +372,35 @@ def main():
             else:
                 tok_start = token.idx
 
-            # Find which line this token belongs to
+            # Look up by character offset in final text
+            token._.direct_speech = direct_speech_tags.get(tok_start)
+            token._.original_form = original_forms.get(tok_start)
+
             for idx, (line_start, line_end) in enumerate(char_positions):
                 if line_start <= tok_start < line_end:
-                    # Always assign the page number
                     token._.page_number = page_numbers.get(idx)
-                    # Only assign line number for non-@ lines
                     if not is_at_line[idx]:
                         token._.line_number = line_numbers.get(idx)
                     break
 
         return doc
-    nlp.add_pipe("line_number_parse", before="tagger")
+    
+    nlp.add_pipe("attribute_tagging", before="tagger")
     
     # Process the text with Spacy
+    #print(repr(text[max(0, text.find('here')-5):text.find('here')+10]))
     doc = nlp(text)
 
     # ------------------------------------------------------------------
-    # 9️⃣  Print tokens with their line numbers and page numbers
+    # Print tokens with their line numbers and page numbers
     # ------------------------------------------------------------------
     for sent in doc.sents:
         for token in sent:
+            direct_speech = token._.direct_speech or "N/A"
             line_num = token._.line_number or "N/A"
             page_num = token._.page_number or "N/A"
-            print(f"Token: '{token.text}' | POS: '{token.pos_}' | Line: {line_num} | Page: {page_num}")
+            original = token._.original_form or token.text  # fall back to token text
+            print(f"Token: '{token.text}' | Original: '{original}' | POS: '{token.pos_}' | Line: {line_num} | Page: {page_num} | Direct Speech?: {direct_speech}")
 
 if __name__ == '__main__':
     main()
