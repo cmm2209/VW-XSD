@@ -121,6 +121,7 @@ def convert_to_mlmodel(
     mlmodel = ct.convert(
         traced_model,
         inputs=[ct.TensorType(shape=example_input.shape)],
+        convert_to="neuralnetwork",
     )
 
     mlmodel.short_description = "MHD Kraken OCR model converted from .safetensors"
