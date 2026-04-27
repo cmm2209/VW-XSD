@@ -1,0 +1,37 @@
+yaml
+name: Convert safetensors to mlmodel
+
+on:
+  workflow_dispatch:  # Manual trigger from GitHub UI
+
+jobs:
+  convert:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install "scikit-learn<=1.5.1"
+          pip install torch
+          pip install coremltools
+          pip install safetensors
+
+      - name: Run conversion
+        run: |
+          python safetensor_to_mlmodel.py MHD.safetensors -o MHD.mlmodel
+
+      - name: Upload mlmodel artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: MHD-mlmodel
+          path: MHD.mlmodel
+          retention-days: 5
