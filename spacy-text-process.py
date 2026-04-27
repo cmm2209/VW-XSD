@@ -8,9 +8,11 @@ import sys
 import pathlib
 import re
 import unicodedata
+import string
 
 Token.set_extension("line_number", default=None, force=True)
 Token.set_extension("page_number", default=None, force=True)
+Token.set_extension("paragraph_number", default=None, force=True)
 Token.set_extension("direct_speech", default=None, force=True)
 Token.set_extension("original_form", default=None, force=True)
 Doc.set_extension("token_offsets", default=None, force=True)
@@ -133,11 +135,23 @@ def main():
         new_page_numbers[new_idx] = page_num
     
     page_numbers = new_page_numbers
+
+    #Identify @ lines
+    is_at_line = [line.strip().startswith('@') for line in original_lines]
     
     # ------------------------------------------------------------------
-    # 4️⃣  Identify @ lines
+    # 4️⃣  Identify paragraph numbers
     # ------------------------------------------------------------------
-    is_at_line = [line.strip().startswith('@') for line in original_lines]
+    paragraph_numbers = {}   # Maps line index → paragraph number
+    current_paragraph = 1
+
+    for idx, line in enumerate(original_lines):
+        # A line beginning with ¶ starts a new paragraph;
+        # strip the marker so it doesn't appear in the cleaned text.
+        if '¶' in line:
+            original_lines[idx] = line.replace('¶', '')
+            current_paragraph += 1
+        paragraph_numbers[idx] = current_paragraph
     
     # ------------------------------------------------------------------
     # 5️⃣  Extract line numbers (at start or end) for validation
@@ -283,8 +297,8 @@ def main():
         if is_at_line[idx]:
             line = re.sub(r'^\s*@\s*', '', line)
         else:
-            line = re.sub(r'^\s*\d{1,6}\s+', '', line)
-            line = re.sub(r'\s*\d{1,6}\s*$', '', line)
+            line = re.sub(r'^\s*\d{1,6}\s+', ' ', line)
+            line = re.sub(r'\s*\d{1,6}\s*$', ' ', line)
         cleaned_lines.append(line)
 
     text = ''.join(cleaned_lines)
@@ -334,9 +348,12 @@ def main():
 
     for base_word, tag, original_form in stripped_words:
         replaced_word, _ = apply_replacements_with_mapping(base_word, replacements)
+        # Strip leading/trailing punctuation from original_form to match
+        # what the tokenizer does when it splits punctuation into separate tokens
+        stripped_original = original_form.strip(string.punctuation)
         # Record the offset of this word in the final text
         direct_speech_tags[current_pos] = tag
-        original_forms[current_pos] = original_form
+        original_forms[current_pos] = stripped_original if stripped_original else original_form
         final_words.append(replaced_word)
         current_pos += len(replaced_word)
 
@@ -350,18 +367,28 @@ def main():
 
     @Language.component("attribute_tagging")
     def attribute_tagger(doc):
-        normalized_lines = [
-            unicodedata.normalize("NFC", line).lower()
-            for line in cleaned_lines
-        ]
+
+        replaced_line_lengths = []
+        for line in cleaned_lines:
+            # Replicate step 8 exactly, word by word
+            line_length = 0
+            for word in re.split(r'(\s)', line):
+                if not word:
+                    continue
+                # Strip direct speech marker
+                if word.startswith(('¿', '%', '€', '$')):
+                    base_word = word[1:]
+                else:
+                    base_word = word
+                replaced_word, _ = apply_replacements_with_mapping(base_word, replacements)
+                line_length += len(replaced_word)
+            replaced_line_lengths.append(line_length)
 
         char_positions = []
         current_pos = 0
-        for line in normalized_lines:
-            line_start = current_pos
-            line_end = current_pos + len(line)
-            char_positions.append((line_start, line_end))
-            current_pos = line_end
+        for length in replaced_line_lengths:
+            char_positions.append((current_pos, current_pos + length))
+            current_pos += length
 
         token_offsets = doc._.token_offsets
         use_custom_offsets = token_offsets is not None and len(token_offsets) == len(doc)
@@ -372,19 +399,19 @@ def main():
             else:
                 tok_start = token.idx
 
-            # Look up by character offset in final text
             token._.direct_speech = direct_speech_tags.get(tok_start)
             token._.original_form = original_forms.get(tok_start)
 
             for idx, (line_start, line_end) in enumerate(char_positions):
                 if line_start <= tok_start < line_end:
                     token._.page_number = page_numbers.get(idx)
+                    token._.paragraph_number = paragraph_numbers.get(idx)
                     if not is_at_line[idx]:
                         token._.line_number = line_numbers.get(idx)
                     break
 
         return doc
-    
+        
     nlp.add_pipe("attribute_tagging", before="tagger")
     
     # Process the text with Spacy
@@ -398,9 +425,10 @@ def main():
         for token in sent:
             direct_speech = token._.direct_speech or "N/A"
             line_num = token._.line_number or "N/A"
+            paragraph_num = token._.paragraph_number or "N/A"
             page_num = token._.page_number or "N/A"
             original = token._.original_form or token.text  # fall back to token text
-            print(f"Token: '{token.text}' | Original: '{original}' | POS: '{token.pos_}' | Line: {line_num} | Page: {page_num} | Direct Speech?: {direct_speech}")
+            print(f"Token: '{token.text}' | Original: '{original}' | POS: '{token.pos_}' | Line: {line_num} | Paragraph: {paragraph_num} | Page: {page_num} | Direct Speech?: {direct_speech}")
 
 if __name__ == '__main__':
     main()
