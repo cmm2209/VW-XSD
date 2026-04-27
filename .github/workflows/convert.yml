@@ -23,7 +23,7 @@ jobs:
 
       - name: Convert
         run: |
-          python safetensor_to_mlmodel.py MHD.safetensors -o MHD.mlmodel
+          python safetensor_to_mlmodel.py mhgerman_print.safetensors -o mhgerman_print.mlmodel
 
       - name: Upload
         uses: actions/upload-artifact@v4
