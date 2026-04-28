@@ -5,6 +5,7 @@ from tokenizers import Tokenizer
 from text_replacements import load_replacements, apply_replacements_with_mapping
 from thinc.api import set_gpu_allocator, require_gpu
 from transformers import AutoModelForMaskedLM
+from spacy.cli.init_config import fill_config
 
 import sys
 import pathlib
@@ -391,6 +392,7 @@ def main():
     # ------------------------------------------------------------------
     # 9️⃣  Load Spacy model and process
     # ------------------------------------------------------------------
+    nlp = spacy.config.load("ghisbert_config.cfg")
     nlp = spacy.load("de_dep_news_trf")
     nlp.tokenizer = BertTokenizer(nlp.vocab, new_tokenizer)
 
