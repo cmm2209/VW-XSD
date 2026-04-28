@@ -3,12 +3,20 @@ from spacy.language import Language
 from spacy.tokens import Token, Doc
 from tokenizers import Tokenizer
 from text_replacements import load_replacements, apply_replacements_with_mapping
+from thinc.api import set_gpu_allocator, require_gpu
 
 import sys
 import pathlib
 import re
 import unicodedata
 import string
+
+# Use the GPU, with memory allocations directed via PyTorch.
+# This prevents out-of-memory errors that would otherwise occur from competing
+# memory pools.
+set_gpu_allocator("pytorch")
+require_gpu(0)
+
 
 Token.set_extension("line_number", default=None, force=True)
 Token.set_extension("page_number", default=None, force=True)
@@ -381,7 +389,7 @@ def main():
     # ------------------------------------------------------------------
     # 9️⃣  Load Spacy model and process
     # ------------------------------------------------------------------
-    nlp = spacy.load("de_core_news_sm")
+    nlp = spacy.load("de_dep_news_trf")
     nlp.tokenizer = BertTokenizer(nlp.vocab, new_tokenizer)
 
     @Language.component("attribute_tagging")
