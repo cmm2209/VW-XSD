@@ -4,6 +4,7 @@ from spacy.tokens import Token, Doc
 from tokenizers import Tokenizer
 from text_replacements import load_replacements, apply_replacements_with_mapping
 from thinc.api import set_gpu_allocator, require_gpu
+from transformers import AutoModelForMaskedLM
 
 import sys
 import pathlib
@@ -14,9 +15,10 @@ import string
 # Use the GPU, with memory allocations directed via PyTorch.
 # This prevents out-of-memory errors that would otherwise occur from competing
 # memory pools.
-set_gpu_allocator("pytorch")
-require_gpu(0)
+#set_gpu_allocator("pytorch")
+#require_gpu(0)
 
+model = AutoModelForMaskedLM.from_pretrained("christinbeck/GHisBERT")
 
 Token.set_extension("line_number", default=None, force=True)
 Token.set_extension("page_number", default=None, force=True)
@@ -441,6 +443,7 @@ def main():
         return doc
         
     nlp.add_pipe("attribute_tagging", before="tagger")
+    nlp.add_pipe("transformer", after="BERTtokenizer")
     
     # Process the text with Spacy
     #print(repr(text[max(0, text.find('here')-5):text.find('here')+10]))
