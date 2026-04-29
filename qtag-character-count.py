@@ -10,11 +10,14 @@ Tags each word of each quotation:
     € for End of quotation,
     $ for Single-word quotation.
 
+
+Counts characters between utterances and insert that count after the end of each.
+
 Usage (PowerShell, CMD, Bash, etc.):
-    python quotation-tagger.py >base_name<
+    python qtag-character-count.py >base_name<
 
 Example:
-    python quotation-tagger.py myfile 
+    python qtag-character-count.py myfile 
     # reads myfile.txt, writes myfile-quote-tag.txt
 """
 
@@ -55,7 +58,7 @@ def main():
     for pattern, replacement in replacements.items():
         content = re.sub(pattern, replacement, content)
     
-    # ------------------------------------------------------------------
+       # ------------------------------------------------------------------
     # 3️⃣  Process the content - tag quotation words
     # ------------------------------------------------------------------
     lines = content.split('\n')
@@ -68,43 +71,55 @@ def main():
         
         for word in words:
             if word == '':
-                # Preserve multiple spaces
                 output_words.append(word)
                 continue
                 
             if not in_quote:
                 if '<' in word:
-                    # Start of a quotation — replace < with $
-                    word = word.replace('<', '¿', 1)
                     in_quote = True
-                    # Check if this same word also ends the quote
                     if '>' in word:
-                        word = word.replace('¿', '$', 1).replace('>', '', 1)
+                        # Single-word quotation
                         in_quote = False
                     output_words.append(word)
                 else:
-                    # Outside a quotation — keep as-is
                     output_words.append(word)
-            else:               
-                # Check if this word ends the quote
+            else:
                 if '>' in word:
-                    word = word.replace('>', '', 1)
-                    word = '€' + word
+                    # End of quotation — remove > and prepend €
                     in_quote = False
-                # Inside a quotation — prepend % to the word
                 else:
+                    # Inside quotation
                     word = '%' + word
                 output_words.append(word)
         
         output_lines.append(' '.join(output_words))
-        tagged_content = '\n'.join(output_lines)
-       
+    
+    tagged_content = '\n'.join(output_lines)  # ✅ Moved outside the loop
+    
     # ------------------------------------------------------------------
-    # 4️⃣  Write the processed content to the output file
+    # 3.5️⃣  Insert character counts after each >
+    # ------------------------------------------------------------------
+    result = []
+    i = 0
+    while i < len(tagged_content):
+        result.append(tagged_content[i])
+        if tagged_content[i] == '>':
+            j = i + 1
+            count = 0
+            while j < len(tagged_content) and tagged_content[j] != '<':
+                count += 1
+                j += 1
+            result.append(str(count))
+        i += 1
+    
+    final_content = ''.join(result)
+    
+    # ------------------------------------------------------------------
+    # 4️⃣  Write output
     # ------------------------------------------------------------------
     with txt_tag_path.open('w', encoding='utf-8') as file:
-        file.write(tagged_content)
-    
+        file.write(final_content)  # ✅ final_content not tagged_content
+        
     print(f"Successfully processed '{txt_path}' -< '{txt_tag_path}'")
 
 if __name__ == '__main__':
