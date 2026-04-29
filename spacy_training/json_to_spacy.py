@@ -52,7 +52,9 @@ def is_contraction_group(group):
 def get_surface_form(virttok_id, token_dipl_list):
     for td in token_dipl_list:
         if td["virttok"] == virttok_id:
-            return td["form"]
+            form = td.get("form", "")
+            # Treat empty form as absent
+            return form if form and form.strip() else None
     return None
 
 
@@ -98,15 +100,28 @@ def make_analyses(parts_iter, replacements):
     (tok, raw_form) pairs.
     Each dict has keys: form, pos, morph, lemma.
     nfc() applied BEFORE replacements.
+    Tokens with empty form fields are skipped.
     """
     analyses = []
     for tok, raw_form in parts_iter:
+
+        # Skip empty form fields
+        if not raw_form or not raw_form.strip():
+            continue
+
         feats     = tok.get("feats_ud", {})
         morph_str = "|".join(
             f"{k}={v}" for k, v in sorted(feats.items())
         ) if feats else ""
+
+        replaced_form = apply_replacements(nfc(raw_form), replacements)
+
+        # Guard against empty string after replacements
+        if not replaced_form:
+            replaced_form = nfc(raw_form) if nfc(raw_form) else "□"
+
         analyses.append({
-            "form":  apply_replacements(nfc(raw_form), replacements),
+            "form":  replaced_form,
             "pos":   tok.get("pos_upos", "X"),
             "morph": morph_str,
             "lemma": tok.get("lemma", raw_form),
@@ -124,10 +139,16 @@ def build_expansions_from_json(json_files, replacements):
 
     normalise() (NFC + lowercase) is applied BEFORE replacements
     so that replacement rules see a consistent Unicode form.
+    Tokens and surface forms with empty fields are skipped.
     """
     expansions = {}
 
-    for path in json_files:
+    for file_idx, path in enumerate(json_files):
+        print(
+            f"Building expansions: {file_idx + 1}/{len(json_files)}",
+            end="\r", flush=True
+        )
+
         data       = load_json_file(path)
         tokens     = data["token"]
         token_dipl = data.get("token_dipl", [])
@@ -144,30 +165,50 @@ def build_expansions_from_json(json_files, replacements):
             # ── Entry 1: form surface → form analyses ─────────────────
             surface_raw = get_surface_form(vt_id, token_dipl)
             if surface_raw is not None:
-                key_orig   = apply_replacements(
+
+                # Skip empty surface forms
+                if not surface_raw or not surface_raw.strip():
+                    continue
+
+                key_orig = apply_replacements(
                     normalise(surface_raw), replacements
                 )
+                if not key_orig:
+                    key_orig = normalise(surface_raw)
+
                 analyses_1 = make_analyses(
                     ((t, t["form"]) for t in sorted_group),
                     replacements
                 )
-                if key_orig not in expansions:
+                if key_orig not in expansions and analyses_1:
                     expansions[key_orig] = analyses_1
 
             # ── Entry 2: norm surface → norm analyses ──────────────────
             norm_forms = [
                 t.get("norm", t["form"]) for t in sorted_group
             ]
-            key_norm   = apply_replacements(
+
+            # Skip if all norm forms are empty
+            norm_forms = [f for f in norm_forms if f and f.strip()]
+            if not norm_forms:
+                continue
+
+            key_norm = apply_replacements(
                 normalise("".join(norm_forms)), replacements
             )
+            if not key_norm:
+                key_norm = normalise("".join(norm_forms))
+
             analyses_2 = make_analyses(
                 zip(sorted_group, norm_forms),
                 replacements
             )
-            if key_norm not in expansions and key_norm != key_orig:
+            if (key_norm not in expansions
+                    and key_norm != key_orig
+                    and analyses_2):
                 expansions[key_norm] = analyses_2
 
+    print()  # newline after progress line
     return expansions
 
 
@@ -176,6 +217,14 @@ def build_expansions_from_json(json_files, replacements):
 # ---------------------------------------------------------------------------
 
 def build_sent_type_map(sentences):
+    """
+    Returns two dicts keyed by 1-based virtual token index:
+      sent_start_type[i] = type for sentence beginning at token i
+      sent_end_type[i]   = type for sentence ending at token i
+
+    Only DE, IE, EE, QE types are recorded.
+    S* and all other values are ignored.
+    """
     sent_start_type = {}
     sent_end_type   = {}
     for sent in sentences:
@@ -202,12 +251,20 @@ def json_to_spacy_docs(json_files, nlp, replacements):
     Order of operations for word forms:
       nfc() first (NFC only, preserves case) → apply_replacements()
 
+    Tokens with empty form fields are skipped entirely.
     Subword token stream left intact — no merging performed,
     mirroring the inference-time pipeline.
+
+    S* punc tags are ignored for sentence typing throughout.
     """
     docs = []
 
-    for path in json_files:
+    for file_idx, path in enumerate(json_files):
+        print(
+            f"Converting docs: {file_idx + 1}/{len(json_files)}",
+            end="\r", flush=True
+        )
+
         data      = load_json_file(path)
         tokens    = data["token"]
         sentences = data.get("sentence", [])
@@ -219,6 +276,7 @@ def json_to_spacy_docs(json_files, nlp, replacements):
         }
         sent_start_type, sent_end_type = build_sent_type_map(sentences)
 
+        # Token-level punc map: virttok_id → SENT_TYPES value only
         token_punc = {}
         for tok in tokens:
             punc = tok.get("punc", "")
@@ -242,12 +300,22 @@ def json_to_spacy_docs(json_files, nlp, replacements):
                                  else group
 
                 for j, tok in enumerate(sorted_group):
-                    raw  = (
+                    raw = (
                         tok.get("norm", tok["form"])
                         if use_norm else tok["form"]
                     )
+
+                    # Skip tokens with empty form fields
+                    if not raw or not raw.strip():
+                        continue
+
                     # nfc() BEFORE apply_replacements()
-                    word = apply_replacements(nfc(raw), replacements)
+                    nfc_raw = nfc(raw)
+                    word    = apply_replacements(nfc_raw, replacements)
+
+                    # Guard against empty string after replacements
+                    if not word:
+                        word = nfc_raw if nfc_raw else "□"
 
                     words.append(word)
                     pos_tags.append(tok.get("pos_upos", "X"))
@@ -277,15 +345,7 @@ def json_to_spacy_docs(json_files, nlp, replacements):
 
             if not words:
                 continue
-            
-            for word_idx, word in enumerate(words):
-                if word == "" or word.strip() == "":
-                    vt_id   = token_positions[word_idx]
-                    print(
-                        f"\nEmpty word at index {word_idx} "
-                        f"in file {path} "
-                        f"(virttok={vt_id}, use_norm={use_norm})"
-                    )
+
             doc = Doc(nlp.vocab, words=words, spaces=spaces)
 
             # ── Per-token attributes ───────────────────────────────────
@@ -295,7 +355,7 @@ def json_to_spacy_docs(json_files, nlp, replacements):
                 token.pos_                      = pos
                 token._.is_contraction_boundary = is_boundary
                 if feats:
-                    morph_str    = "|".join(
+                    morph_str = "|".join(
                         f"{k}={v}" for k, v in sorted(feats.items())
                     )
                     token.set_morph(morph_str)
@@ -350,31 +410,44 @@ def json_to_spacy_docs(json_files, nlp, replacements):
                 sorted_group   = sort_group(group) if is_contraction \
                                  else group
 
-                if is_contraction:
+                if is_contraction and word_idx < len(doc):
                     token      = doc[word_idx]
                     norm_forms = [
                         t.get("norm", t["form"])
                         for t in sorted_group
+                        if t.get("norm", t["form"])
+                        and t.get("norm", t["form"]).strip()
                     ]
-                    parts = (
-                        zip(sorted_group, norm_forms)
-                        if use_norm
-                        else (
-                            (t, t["form"]) for t in sorted_group
+                    if norm_forms:
+                        parts = (
+                            zip(sorted_group, norm_forms)
+                            if use_norm
+                            else (
+                                (t, t["form"])
+                                for t in sorted_group
+                                if t["form"] and t["form"].strip()
+                            )
                         )
-                    )
-                    analyses = make_analyses(parts, replacements)
-                    for analysis_idx, analysis in enumerate(analyses):
-                        span = doc[token.i : token.i + 1]
-                        span._.word_form         = analysis["form"]
-                        span._.word_pos          = analysis["pos"]
-                        span._.word_morph        = analysis["morph"]
-                        span._.word_lemma        = analysis["lemma"]
-                        span._.word_index        = analysis_idx
-                        span._.surface_token_idx = token.i
-                        mwt_spans.append(span)
+                        analyses = make_analyses(parts, replacements)
+                        for analysis_idx, analysis in enumerate(analyses):
+                            span = doc[token.i : token.i + 1]
+                            span._.word_form         = analysis["form"]
+                            span._.word_pos          = analysis["pos"]
+                            span._.word_morph        = analysis["morph"]
+                            span._.word_lemma        = analysis["lemma"]
+                            span._.word_index        = analysis_idx
+                            span._.surface_token_idx = token.i
+                            mwt_spans.append(span)
 
-                word_idx += len(sorted_group)
+                # Advance word_idx by the number of non-empty tokens
+                # in this group that were actually added to words[]
+                for tok in sorted_group:
+                    raw_check = (
+                        tok.get("norm", tok["form"])
+                        if use_norm else tok["form"]
+                    )
+                    if raw_check and raw_check.strip():
+                        word_idx += 1
 
             doc.spans["mwt_words"] = spacy.tokens.SpanGroup(
                 doc,
@@ -384,6 +457,7 @@ def json_to_spacy_docs(json_files, nlp, replacements):
 
             docs.append(doc)
 
+    print()  # newline after progress line
     return docs
 
 
@@ -421,6 +495,8 @@ def main():
         print("No documents converted. Check JSON structure.")
         sys.exit(1)
 
+    # Shuffle in pairs so form and norm variants of the same
+    # source document always end up in the same split
     paired      = list(zip(docs[0::2], docs[1::2]))
     random.seed(42)
     random.shuffle(paired)
