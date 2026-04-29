@@ -1,0 +1,1584 @@
+## Complete Plan: Training a spaCy Pipeline with GHisBERT, MWT Expansion, and Sentence Type Detection
+
+---
+
+## Overview
+
+```
+JSON training files
+        ↓
+json_to_spacy.py
+(converts to spaCy format + builds expansion table,
+ applies replacements.json to both form and norm variants,
+ produces two docs per source file,
+ records sentence type from DE/IE/EE/QE punc tags only)
+        ↓
+Stage A: Train MWT detector
+        ↓
+Stage B: Train tagger + morphologizer only
+        ↓
+Stage C: Train senter + sent_type_detector
+         using frozen tagger/morphologizer outputs
+         and explicit POS/morph feature concatenation
+         via PyTorch architecture
+        ↓
+Load trained pipeline in main script
+```
+
+---
+
+## 1. Install Dependencies
+
+```bash
+pip install spacy-transformers transformers spacy srsly
+pip install torch --index-url https://download.pytorch.org/whl/cu128
+pip install spacy[cuda128]
+```
+
+---
+
+## 2. File Structure
+
+```
+project/
+├── main_script.py
+├── mwt_component.py
+├── sent_type_component.py
+├── senter_model.py             ← NEW: PyTorch architecture
+├── json_to_spacy.py
+├── stage_a_config.cfg
+├── stage_b_config.cfg
+├── stage_c_config.cfg
+├── BERTtokenizer.json
+├── replacements.json
+├── text_replacements.py
+├── data/
+│   ├── train.spacy
+│   ├── dev.spacy
+│   └── expansions.json
+├── output_mwt/
+│   └── model-best/
+├── output_stage_b/
+│   └── model-best/
+└── output_stage_c/
+    └── model-best/
+```
+
+---
+
+## 3. `mwt_component.py`
+
+```python
+# mwt_component.py
+import unicodedata
+import srsly
+import spacy
+from spacy.language import Language
+from spacy.tokens import Doc, Token, Span
+
+# ---------------------------------------------------------------------------
+# Token extensions
+# ---------------------------------------------------------------------------
+Token.set_extension("is_contraction_boundary", default=False, force=True)
+Token.set_extension("line_number",             default=None,  force=True)
+Token.set_extension("page_number",             default=None,  force=True)
+Token.set_extension("paragraph_number",        default=None,  force=True)
+Token.set_extension("book_number",             default=None,  force=True)
+Token.set_extension("direct_speech",           default=None,  force=True)
+Token.set_extension("original_form",           default=None,  force=True)
+
+# ---------------------------------------------------------------------------
+# Span extensions for MWT syntactic words
+# ---------------------------------------------------------------------------
+Span.set_extension("word_form",         default=None, force=True)
+Span.set_extension("word_pos",          default=None, force=True)
+Span.set_extension("word_morph",        default=None, force=True)
+Span.set_extension("word_lemma",        default=None, force=True)
+Span.set_extension("word_index",        default=None, force=True)
+Span.set_extension("surface_token_idx", default=None, force=True)
+
+
+# ---------------------------------------------------------------------------
+# MWT Detector
+# ---------------------------------------------------------------------------
+
+@Language.factory("mwt_detector")
+def create_mwt_detector(nlp, name):
+    return MWTDetector(nlp.vocab)
+
+
+class MWTDetector:
+    """
+    Uses GHisBERT contextual embeddings to decide, per ## token,
+    whether it marks a genuine contraction boundary (True)
+    or is normal subword tokenization (False).
+
+    Sets token._.is_contraction_boundary on each ## token.
+    """
+
+    def __init__(self, vocab):
+        self.vocab = vocab
+
+    def __call__(self, doc):
+        trf_data = doc._.trf_data
+        if trf_data is None:
+            return doc
+
+        for i, token in enumerate(doc):
+            if token.text.startswith("##"):
+                vec = self._get_boundary_vector(trf_data, i)
+                token._.is_contraction_boundary = self._classify(vec)
+
+        return doc
+
+    def _get_boundary_vector(self, trf_data, token_idx):
+        last_layer = trf_data.tensors[-1][0]
+        if token_idx > 0:
+            vec = (last_layer[token_idx - 1] + last_layer[token_idx]) / 2
+        else:
+            vec = last_layer[token_idx]
+        return vec
+
+    def _classify(self, vector):
+        raise NotImplementedError("Load trained weights via from_disk()")
+
+    def to_disk(self, path, exclude=()):
+        srsly.write_json(path / "cfg.json", {})
+
+    def from_disk(self, path, exclude=()):
+        return self
+
+
+# ---------------------------------------------------------------------------
+# MWT Annotator
+# ---------------------------------------------------------------------------
+
+@Language.factory("mwt_annotator")
+def create_mwt_annotator(nlp, name):
+    return MWTAnnotator(nlp.vocab)
+
+
+class MWTAnnotator:
+    """
+    Processes MWT contractions without modifying the token stream.
+
+    For each contraction (a surface token followed by one or more
+    ## tokens where is_contraction_boundary is True):
+      - Reconstructs the surface form from the root token and its
+        ## pieces
+      - Looks up the expansion table to get per-word analyses
+      - Creates Span entries in doc.spans["mwt_words"] for each
+        syntactic word, carrying form/pos/morph/lemma annotations
+
+    The subword token stream is left completely intact because:
+      - The transformer and TransformerListeners need the subword
+        tokens to align their inputs correctly
+      - ## prefixes are useful structural signals for the tagger
+      - No downstream component requires a merged stream given
+        that syntactic word annotations live in
+        doc.spans["mwt_words"]
+
+    Non-contraction ## tokens are ignored.
+    """
+
+    def __init__(self, vocab, expansions=None):
+        self.vocab      = vocab
+        self.expansions = expansions or {}
+
+    def __call__(self, doc):
+        mwt_spans = []
+
+        i = 0
+        while i < len(doc):
+            token = doc[i]
+
+            j               = i + 1
+            subword_indices = []
+            while j < len(doc) and doc[j].text.startswith("##"):
+                subword_indices.append(j)
+                j += 1
+
+            if subword_indices:
+                is_contraction = any(
+                    doc[k]._.is_contraction_boundary
+                    for k in subword_indices
+                )
+
+                if is_contraction:
+                    surface = token.text + "".join(
+                        doc[k].text.lstrip("#")
+                        for k in subword_indices
+                    )
+                    lower = unicodedata.normalize(
+                        "NFC", surface.lower()
+                    )
+
+                    if lower in self.expansions:
+                        analyses = self.expansions[lower]
+                        for word_idx, analysis in enumerate(analyses):
+                            span = doc[token.i : token.i + 1]
+                            span._.word_form         = analysis.get(
+                                "form",  ""
+                            )
+                            span._.word_pos          = analysis.get(
+                                "pos",   "X"
+                            )
+                            span._.word_morph        = analysis.get(
+                                "morph", ""
+                            )
+                            span._.word_lemma        = analysis.get(
+                                "lemma", ""
+                            )
+                            span._.word_index        = word_idx
+                            span._.surface_token_idx = token.i
+                            mwt_spans.append(span)
+
+                i = j
+            else:
+                i += 1
+
+        doc.spans["mwt_words"] = spacy.tokens.SpanGroup(
+            doc,
+            name  = "mwt_words",
+            spans = mwt_spans,
+        )
+
+        return doc
+
+    def to_disk(self, path, exclude=()):
+        srsly.write_json(path / "expansions.json", self.expansions)
+
+    def from_disk(self, path, exclude=()):
+        self.expansions = srsly.read_json(path / "expansions.json")
+        return self
+```
+
+---
+
+## 4. `sent_type_component.py`
+
+```python
+# sent_type_component.py
+import srsly
+from spacy.language import Language
+from spacy.tokens import Token, Span
+
+Token.set_extension("sent_type", default=None, force=True)
+Span.set_extension("sent_type",  default=None, force=True)
+
+SENT_TYPES = ["DE", "IE", "EE", "QE"]
+
+
+@Language.factory("sent_type_detector")
+def create_sent_type_detector(nlp, name):
+    return SentTypeDetector(nlp.vocab)
+
+
+class SentTypeDetector:
+    """
+    Classifies each sentence as DE / IE / EE / QE.
+    Runs after tagger and morphologizer (Stage C) so that
+    token.pos_ and token.morph_ are populated and available
+    to the ConcatPOSMorphTagger architecture.
+    S* tags are never used as classification targets.
+    """
+
+    def __init__(self, vocab):
+        self.vocab  = vocab
+        self.labels = SENT_TYPES
+
+    def __call__(self, doc):
+        trf_data = doc._.trf_data
+        if trf_data is None:
+            return doc
+
+        for sent in doc.sents:
+            sent_vec             = self._pool_sentence(trf_data, sent)
+            label                = self._classify(sent_vec)
+            sent._.sent_type     = label
+            sent[-1]._.sent_type = label
+
+        return doc
+
+    def _pool_sentence(self, trf_data, sent):
+        last_layer = trf_data.tensors[-1][0]
+        return last_layer[sent.start:sent.end].mean(axis=0)
+
+    def _classify(self, vector):
+        raise NotImplementedError("Load trained weights via from_disk()")
+
+    def to_disk(self, path, exclude=()):
+        srsly.write_json(path / "cfg.json", {"labels": self.labels})
+
+    def from_disk(self, path, exclude=()):
+        cfg         = srsly.read_json(path / "cfg.json")
+        self.labels = cfg["labels"]
+        return self
+```
+
+---
+
+## 5. `senter_model.py`
+
+```python
+# senter_model.py
+"""
+PyTorch implementation of ConcatPOSMorphTagger.v1
+
+Architecture per token:
+  transformer embedding  (from GHisBERT via TransformerListener)
+  POS tag embedding      (nn.Embedding, learned)
+  morph feature vector   (binary → Linear → ReLU, learned)
+       ↓ concatenate
+  MLP: Linear → ReLU → Linear → output
+
+Used by both senter and sent_type_detector in Stage C.
+The tagger and morphologizer are frozen in Stage C so that
+token.pos_ and token.morph_ are stable symbolic inputs.
+The POS and morph embedding tables therefore train against
+stable inputs and converge reliably.
+
+Registered as:
+  @architectures = "custom.ConcatPOSMorphTagger.v1"
+"""
+
+from typing import List, Optional, Tuple
+from pathlib import Path
+import numpy
+
+import torch
+import torch.nn as nn
+
+import spacy
+from spacy.tokens import Doc
+from thinc.api import (
+    Model,
+    registry,
+    get_current_ops,
+    torch2xp,
+    xp2torch,
+)
+from thinc.types import Floats2d
+
+
+# ---------------------------------------------------------------------------
+# Feature extraction helpers (run outside the PyTorch graph)
+# ---------------------------------------------------------------------------
+
+def extract_pos_ids(docs: List[Doc]) -> torch.Tensor:
+    """
+    Returns a LongTensor of shape (n_tokens,) containing the
+    spaCy integer POS id for each token across all docs.
+    """
+    ids = [token.pos for doc in docs for token in doc]
+    return torch.tensor(ids, dtype=torch.long)
+
+
+def extract_morph_matrix(
+    docs: List[Doc], n_rows: int
+) -> torch.Tensor:
+    """
+    Returns a FloatTensor of shape (n_tokens, n_rows).
+    Each row is a binary vector with 1.0 at the hashed index
+    of each active morphological feature=value pair.
+    Feature strings are hashed into [0, n_rows).
+    """
+    n_toks = sum(len(doc) for doc in docs)
+    mat    = torch.zeros(n_toks, n_rows, dtype=torch.float32)
+    row    = 0
+    for doc in docs:
+        for token in doc:
+            for field, values in token.morph.to_dict().items():
+                vals = values if isinstance(values, list) else [values]
+                for value in vals:
+                    col = int(hash(f"{field}_{value}") % n_rows)
+                    mat[row, col] = 1.0
+            row += 1
+    return mat
+
+
+# ---------------------------------------------------------------------------
+# PyTorch nn.Module
+# ---------------------------------------------------------------------------
+
+class ConcatPOSMorphModule(nn.Module):
+    """
+    Combines transformer embeddings with POS and morphology
+    features, then passes through a two-layer MLP.
+
+    Parameters
+    ----------
+    trf_width    : int   Width of transformer (GHisBERT) embeddings
+    pos_vocab    : int   Number of distinct POS ids (64 covers all UPOS)
+    pos_width    : int   POS embedding size
+    morph_vocab  : int   Hash space for morphological feature strings
+    morph_width  : int   Projected morphology embedding size
+    hidden_width : int   MLP hidden layer width
+    nO           : int   Output size (number of labels)
+    """
+
+    def __init__(
+        self,
+        trf_width:    int,
+        pos_vocab:    int = 64,
+        pos_width:    int = 32,
+        morph_vocab:  int = 2048,
+        morph_width:  int = 64,
+        hidden_width: int = 128,
+        nO:           int = 2,
+    ):
+        super().__init__()
+
+        # POS embedding table
+        self.pos_embed  = nn.Embedding(pos_vocab, pos_width)
+
+        # Morphological feature projection
+        self.morph_proj = nn.Sequential(
+            nn.Linear(morph_vocab, morph_width),
+            nn.ReLU(),
+        )
+
+        # MLP operating on the concatenated vector
+        concat_width = trf_width + pos_width + morph_width
+        self.mlp = nn.Sequential(
+            nn.Linear(concat_width, hidden_width),
+            nn.ReLU(),
+            nn.Linear(hidden_width, nO),
+        )
+
+        # Xavier initialisation
+        nn.init.xavier_uniform_(self.pos_embed.weight)
+        nn.init.xavier_uniform_(self.morph_proj[0].weight)
+        nn.init.zeros_(self.morph_proj[0].bias)
+        nn.init.xavier_uniform_(self.mlp[0].weight)
+        nn.init.zeros_(self.mlp[0].bias)
+        nn.init.xavier_uniform_(self.mlp[2].weight)
+        nn.init.zeros_(self.mlp[2].bias)
+
+    def forward(
+        self,
+        trf_vecs:  torch.Tensor,   # (n_tokens, trf_width)
+        pos_ids:   torch.Tensor,   # (n_tokens,)
+        morph_mat: torch.Tensor,   # (n_tokens, morph_vocab)
+    ) -> torch.Tensor:             # (n_tokens, nO)
+
+        pos_vecs   = self.pos_embed(pos_ids)        # (n, pos_width)
+        morph_vecs = self.morph_proj(morph_mat)     # (n, morph_width)
+        combined   = torch.cat(
+            [trf_vecs, pos_vecs, morph_vecs], dim=-1
+        )
+        return self.mlp(combined)
+
+
+# ---------------------------------------------------------------------------
+# Thinc Model wrapper
+# ---------------------------------------------------------------------------
+
+@registry.architectures("custom.ConcatPOSMorphTagger.v1")
+def build_concat_pos_morph_tagger(
+    tok2vec:      Model,
+    pos_width:    int = 32,
+    morph_width:  int = 64,
+    hidden_width: int = 128,
+    nO:           Optional[int] = None,
+) -> Model[List[Doc], Floats2d]:
+    """
+    Thinc Model wrapping ConcatPOSMorphModule.
+
+    Input:  List[Doc]  — tokens must have .pos and .morph set
+                         (requires tagger + morphologizer upstream)
+    Output: Floats2d   — (n_tokens, nO)
+
+    Parameters
+    ----------
+    tok2vec      : TransformerListener model
+    pos_width    : POS embedding dimensionality
+    morph_width  : Morphological feature projection dimensionality
+    hidden_width : MLP hidden layer width
+    nO           : Output size; inferred from label count if None
+    """
+
+    def forward(
+        model: Model, docs: List[Doc], is_train: bool
+    ) -> Tuple[Floats2d, callable]:
+
+        ops = model.ops
+
+        # ── 1. Transformer embeddings ──────────────────────────────────
+        trf_out, trf_bp = model.get_ref("tok2vec")(docs, is_train)
+
+        # ── 2. Extract symbolic features ──────────────────────────────
+        morph_vocab = model.attrs["morph_vocab"]
+        pos_ids     = extract_pos_ids(docs)
+        morph_mat   = extract_morph_matrix(docs, morph_vocab)
+
+        # ── 3. Move to correct device ──────────────────────────────────
+        m      = model.attrs["torch_model"]
+        device = next(m.parameters()).device
+
+        trf_t     = xp2torch(trf_out, requires_grad=is_train).to(device)
+        pos_ids_t = pos_ids.to(device)
+        morph_t   = morph_mat.to(device)
+
+        # ── 4. Forward pass ────────────────────────────────────────────
+        output_t  = m(trf_t, pos_ids_t, morph_t)
+
+        # ── 5. Convert output back to Thinc/NumPy array ───────────────
+        output_xp = torch2xp(output_t)
+
+        def backprop(dOutput: Floats2d) -> List:
+            # Convert incoming gradient to torch
+            dOutput_t = xp2torch(dOutput).to(device)
+
+            # PyTorch autograd computes all gradients
+            output_t.backward(dOutput_t)
+
+            # Pass transformer gradient back through TransformerListener
+            if trf_t.grad is not None:
+                trf_bp(torch2xp(trf_t.grad))
+
+            # Zero PyTorch gradients for next batch
+            m.zero_grad()
+
+            return []   # no gradient w.r.t. docs input
+
+        return output_xp, backprop
+
+    def init(
+        model: Model,
+        X: Optional[List[Doc]] = None,
+        Y=None,
+    ) -> None:
+        # Initialise transformer listener
+        model.get_ref("tok2vec").initialize(X=X)
+
+        # Resolve transformer output width
+        trf_width = model.get_ref("tok2vec").get_dim("nO") or 768
+        nO_actual = nO or hidden_width
+
+        morph_vocab = model.attrs["morph_vocab"]
+
+        # Build PyTorch module
+        torch_module = ConcatPOSMorphModule(
+            trf_width    = trf_width,
+            pos_width    = pos_width,
+            morph_width  = morph_width,
+            morph_vocab  = morph_vocab,
+            hidden_width = hidden_width,
+            nO           = nO_actual,
+        )
+
+        # Move to GPU if spaCy is using GPU
+        ops = model.ops
+        if ops.__class__.__name__ in ("CupyOps", "NumpyOps"):
+            if torch.cuda.is_available():
+                torch_module = torch_module.cuda()
+
+        model.attrs["torch_model"] = torch_module
+
+    def to_disk(path, exclude=()):
+        torch_model = model.attrs.get("torch_model")
+        if torch_model is not None:
+            p = Path(path)
+            p.mkdir(parents=True, exist_ok=True)
+            torch.save(
+                torch_model.state_dict(),
+                p / "torch_model.pt"
+            )
+
+    def from_disk(path, exclude=()):
+        p           = Path(path)
+        state_dict  = torch.load(p / "torch_model.pt")
+        torch_model = model.attrs.get("torch_model")
+        if torch_model is not None:
+            torch_model.load_state_dict(state_dict)
+        return model
+
+    model = Model(
+        "concat_pos_morph_tagger",
+        forward,
+        init=init,
+        refs  = {"tok2vec": tok2vec},
+        attrs = {
+            "torch_model": None,
+            "morph_vocab": 2048,   # hash space for morph features
+        },
+        dims  = {"nO": nO},
+    )
+
+    # Attach serialisation methods
+    model._func_to_disk  = to_disk
+    model._func_from_disk = from_disk
+
+    return model
+```
+
+---
+
+## 6. `json_to_spacy.py`
+
+```python
+# json_to_spacy.py
+import json
+import glob
+import random
+import unicodedata
+import srsly
+import sys
+from pathlib import Path
+from spacy.tokens import DocBin, Doc, Token, Span
+import spacy
+
+from text_replacements import load_replacements, apply_replacements_with_mapping
+
+Token.set_extension("is_contraction_boundary", default=False, force=True)
+Token.set_extension("sent_type",               default=None,  force=True)
+Span.set_extension("sent_type",                default=None,  force=True)
+Span.set_extension("word_form",                default=None,  force=True)
+Span.set_extension("word_pos",                 default=None,  force=True)
+Span.set_extension("word_morph",               default=None,  force=True)
+Span.set_extension("word_lemma",               default=None,  force=True)
+Span.set_extension("word_index",               default=None,  force=True)
+Span.set_extension("surface_token_idx",        default=None,  force=True)
+
+SENT_TYPES = {"DE", "IE", "EE", "QE"}
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def load_json_file(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def group_tokens_by_virttok(tokens):
+    groups = {}
+    order  = []
+    for tok in tokens:
+        vt = tok["virttok"]
+        if vt not in groups:
+            groups[vt] = []
+            order.append(vt)
+        groups[vt].append(tok)
+    return order, groups
+
+
+def is_contraction_group(group):
+    return any("join" in t for t in group)
+
+
+def get_surface_form(virttok_id, token_dipl_list):
+    for td in token_dipl_list:
+        if td["virttok"] == virttok_id:
+            return td["form"]
+    return None
+
+
+def sort_group(group):
+    order_map = {"MS1": 0, "MS2": 1, "MS3": 2}
+    return sorted(
+        group,
+        key=lambda t: order_map.get(t.get("token_type", "MS1"), 0)
+    )
+
+
+def apply_replacements(text, replacements):
+    replaced, _ = apply_replacements_with_mapping(text, replacements)
+    return replaced
+
+
+def nfc(text):
+    """
+    NFC normalisation only — preserves case.
+    Applied BEFORE replacements so replacement rules see a
+    consistent Unicode form. Case preserved for tagger training.
+    """
+    return unicodedata.normalize("NFC", text)
+
+
+def normalise(text):
+    """
+    NFC normalisation + lowercase.
+    Used for expansion table lookup keys only — never for
+    word forms stored in training docs.
+    Applied BEFORE replacements.
+    """
+    return unicodedata.normalize("NFC", text).lower()
+
+
+# ---------------------------------------------------------------------------
+# Build expansion dictionary
+# ---------------------------------------------------------------------------
+
+def make_analyses(parts_iter, replacements):
+    """
+    Build a list of analysis dicts from an iterable of
+    (tok, raw_form) pairs.
+    Each dict has keys: form, pos, morph, lemma.
+    nfc() applied BEFORE replacements.
+    """
+    analyses = []
+    for tok, raw_form in parts_iter:
+        feats     = tok.get("feats_ud", {})
+        morph_str = "|".join(
+            f"{k}={v}" for k, v in sorted(feats.items())
+        ) if feats else ""
+        analyses.append({
+            "form":  apply_replacements(nfc(raw_form), replacements),
+            "pos":   tok.get("pos_upos", "X"),
+            "morph": morph_str,
+            "lemma": tok.get("lemma", raw_form),
+        })
+    return analyses
+
+
+def build_expansions_from_json(json_files, replacements):
+    """
+    Build expansion dictionary from all JSON files.
+
+    For each contraction, creates TWO entries:
+      1. apply_replacements(normalise(form surface)) → form analyses
+      2. apply_replacements(normalise(norm surface)) → norm analyses
+
+    normalise() (NFC + lowercase) is applied BEFORE replacements
+    so that replacement rules see a consistent Unicode form.
+    """
+    expansions = {}
+
+    for path in json_files:
+        data       = load_json_file(path)
+        tokens     = data["token"]
+        token_dipl = data.get("token_dipl", [])
+
+        order, groups = group_tokens_by_virttok(tokens)
+
+        for vt_id in order:
+            group = groups[vt_id]
+            if not is_contraction_group(group):
+                continue
+
+            sorted_group = sort_group(group)
+
+            # ── Entry 1: form surface → form analyses ─────────────────
+            surface_raw = get_surface_form(vt_id, token_dipl)
+            if surface_raw is not None:
+                key_orig   = apply_replacements(
+                    normalise(surface_raw), replacements
+                )
+                analyses_1 = make_analyses(
+                    ((t, t["form"]) for t in sorted_group),
+                    replacements
+                )
+                if key_orig not in expansions:
+                    expansions[key_orig] = analyses_1
+
+            # ── Entry 2: norm surface → norm analyses ──────────────────
+            norm_forms = [
+                t.get("norm", t["form"]) for t in sorted_group
+            ]
+            key_norm   = apply_replacements(
+                normalise("".join(norm_forms)), replacements
+            )
+            analyses_2 = make_analyses(
+                zip(sorted_group, norm_forms),
+                replacements
+            )
+            if key_norm not in expansions and key_norm != key_orig:
+                expansions[key_norm] = analyses_2
+
+    return expansions
+
+
+# ---------------------------------------------------------------------------
+# Build sentence type maps
+# ---------------------------------------------------------------------------
+
+def build_sent_type_map(sentences):
+    sent_start_type = {}
+    sent_end_type   = {}
+    for sent in sentences:
+        stype = sent.get("type", "")
+        if stype not in SENT_TYPES:
+            continue
+        sent_start_type[sent["begin"]] = stype
+        sent_end_type[sent["end"]]     = stype
+    return sent_start_type, sent_end_type
+
+
+# ---------------------------------------------------------------------------
+# Convert JSON documents to spaCy Docs
+# ---------------------------------------------------------------------------
+
+def json_to_spacy_docs(json_files, nlp, replacements):
+    """
+    Convert JSON files to spaCy Doc objects.
+
+    For each source document produces TWO docs:
+      1. Using original 'form' values
+      2. Using normalised 'norm' values
+
+    Order of operations for word forms:
+      nfc() first (NFC only, preserves case) → apply_replacements()
+
+    Subword token stream left intact — no merging performed,
+    mirroring the inference-time pipeline.
+    """
+    docs = []
+
+    for path in json_files:
+        data      = load_json_file(path)
+        tokens    = data["token"]
+        sentences = data.get("sentence", [])
+
+        order, groups = group_tokens_by_virttok(tokens)
+
+        virttok_to_pos = {
+            vt: i + 1 for i, vt in enumerate(order)
+        }
+        sent_start_type, sent_end_type = build_sent_type_map(sentences)
+
+        token_punc = {}
+        for tok in tokens:
+            punc = tok.get("punc", "")
+            if punc in SENT_TYPES:
+                token_punc[tok["virttok"]] = punc
+
+        for use_norm in (False, True):
+
+            words                   = []
+            spaces                  = []
+            pos_tags                = []
+            morph_feats             = []
+            is_contraction_boundary = []
+            token_positions         = []
+            word_punc               = []
+
+            for i, vt_id in enumerate(order):
+                group          = groups[vt_id]
+                is_contraction = is_contraction_group(group)
+                sorted_group   = sort_group(group) if is_contraction \
+                                 else group
+
+                for j, tok in enumerate(sorted_group):
+                    raw  = (
+                        tok.get("norm", tok["form"])
+                        if use_norm else tok["form"]
+                    )
+                    # nfc() BEFORE apply_replacements()
+                    word = apply_replacements(nfc(raw), replacements)
+
+                    words.append(word)
+                    pos_tags.append(tok.get("pos_upos", "X"))
+                    morph_feats.append(tok.get("feats_ud", {}))
+                    token_positions.append(vt_id)
+
+                    token_type  = tok.get("token_type", "")
+                    is_boundary = (
+                        is_contraction and token_type in ("MS2", "MS3")
+                    )
+                    is_contraction_boundary.append(is_boundary)
+
+                    if j == len(sorted_group) - 1:
+                        punc = tok.get("punc", "")
+                        word_punc.append(
+                            punc if punc in SENT_TYPES else ""
+                        )
+                    else:
+                        word_punc.append("")
+
+                    if j < len(sorted_group) - 1:
+                        spaces.append(False)
+                    elif i < len(order) - 1:
+                        spaces.append(True)
+                    else:
+                        spaces.append(False)
+
+            if not words:
+                continue
+
+            doc = Doc(nlp.vocab, words=words, spaces=spaces)
+
+            # ── Per-token attributes ───────────────────────────────────
+            for token, pos, feats, is_boundary in zip(
+                doc, pos_tags, morph_feats, is_contraction_boundary
+            ):
+                token.pos_                      = pos
+                token._.is_contraction_boundary = is_boundary
+                if feats:
+                    morph_str    = "|".join(
+                        f"{k}={v}" for k, v in sorted(feats.items())
+                    )
+                    token.morph_ = morph_str
+
+            # ── Sentence boundaries ────────────────────────────────────
+            virttok_to_word_idx = {}
+            for word_idx, vt_id in enumerate(token_positions):
+                if vt_id not in virttok_to_word_idx:
+                    virttok_to_word_idx[vt_id] = word_idx
+
+            sent_start_word_idxs = set()
+            if sentences:
+                for sent in sentences:
+                    begin_vtok = f"t{sent['begin']}"
+                    if begin_vtok in virttok_to_word_idx:
+                        sent_start_word_idxs.add(
+                            virttok_to_word_idx[begin_vtok]
+                        )
+
+            for i, token in enumerate(doc):
+                token.is_sent_start = (i in sent_start_word_idxs)
+
+            # ── Sentence type labels ───────────────────────────────────
+            word_idx_to_sent_end_type = {}
+            for word_idx, vt_id in enumerate(token_positions):
+                pos_1based = virttok_to_pos.get(vt_id)
+                if pos_1based in sent_end_type:
+                    word_idx_to_sent_end_type[word_idx] = \
+                        sent_end_type[pos_1based]
+
+            for word_idx, punc in enumerate(word_punc):
+                if (punc in SENT_TYPES
+                        and word_idx not in word_idx_to_sent_end_type):
+                    word_idx_to_sent_end_type[word_idx] = punc
+
+            for word_idx, stype in word_idx_to_sent_end_type.items():
+                doc[word_idx]._.sent_type = stype
+
+            for sent in doc.sents:
+                for tok in reversed(list(sent)):
+                    if tok._.sent_type is not None:
+                        sent._.sent_type = tok._.sent_type
+                        break
+
+            # ── MWT word spans ─────────────────────────────────────────
+            mwt_spans = []
+            word_idx  = 0
+
+            for vt_id in order:
+                group          = groups[vt_id]
+                is_contraction = is_contraction_group(group)
+                sorted_group   = sort_group(group) if is_contraction \
+                                 else group
+
+                if is_contraction:
+                    token      = doc[word_idx]
+                    norm_forms = [
+                        t.get("norm", t["form"])
+                        for t in sorted_group
+                    ]
+                    parts = (
+                        zip(sorted_group, norm_forms)
+                        if use_norm
+                        else (
+                            (t, t["form"]) for t in sorted_group
+                        )
+                    )
+                    analyses = make_analyses(parts, replacements)
+                    for analysis_idx, analysis in enumerate(analyses):
+                        span = doc[token.i : token.i + 1]
+                        span._.word_form         = analysis["form"]
+                        span._.word_pos          = analysis["pos"]
+                        span._.word_morph        = analysis["morph"]
+                        span._.word_lemma        = analysis["lemma"]
+                        span._.word_index        = analysis_idx
+                        span._.surface_token_idx = token.i
+                        mwt_spans.append(span)
+
+                word_idx += len(sorted_group)
+
+            doc.spans["mwt_words"] = spacy.tokens.SpanGroup(
+                doc,
+                name  = "mwt_words",
+                spans = mwt_spans,
+            )
+
+            docs.append(doc)
+
+    return docs
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main():
+    json_dir   = sys.argv[1] if len(sys.argv) > 1 else "."
+    output_dir = Path("data")
+    output_dir.mkdir(exist_ok=True)
+
+    json_files = sorted(glob.glob(f"{json_dir}/*.json"))
+    print(f"Found {len(json_files)} JSON files.")
+
+    if not json_files:
+        print("No JSON files found. Check your path.")
+        sys.exit(1)
+
+    replacements = load_replacements("replacements.json")
+    print("Loaded replacements.json.")
+
+    expansions = build_expansions_from_json(json_files, replacements)
+    srsly.write_json(output_dir / "expansions.json", expansions)
+    print(f"Built expansion table with {len(expansions)} entries.")
+
+    nlp  = spacy.blank("de")
+    docs = json_to_spacy_docs(json_files, nlp, replacements)
+    print(
+        f"Converted {len(docs)} documents "
+        f"({len(json_files)} source files × 2 variants)."
+    )
+
+    if not docs:
+        print("No documents converted. Check JSON structure.")
+        sys.exit(1)
+
+    paired      = list(zip(docs[0::2], docs[1::2]))
+    random.seed(42)
+    random.shuffle(paired)
+    split       = int(len(paired) * 0.9)
+    train_pairs = paired[:split]
+    dev_pairs   = paired[split:]
+
+    train_docs = [d for pair in train_pairs for d in pair]
+    dev_docs   = [d for pair in dev_pairs   for d in pair]
+
+    train_db = DocBin(docs=train_docs, store_user_data=True)
+    dev_db   = DocBin(docs=dev_docs,   store_user_data=True)
+    train_db.to_disk(output_dir / "train.spacy")
+    dev_db.to_disk(output_dir   / "dev.spacy")
+
+    print(
+        f"Saved {len(train_docs)} train docs "
+        f"and {len(dev_docs)} dev docs."
+    )
+    print("Done. Files written to data/")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Run it:
+
+```bash
+python json_to_spacy.py path/to/json/files/
+```
+
+---
+
+## 7. `stage_a_config.cfg` (MWT detector only)
+
+```ini
+[nlp]
+lang = "de"
+pipeline = ["transformer", "mwt_detector"]
+
+[components]
+
+[components.transformer]
+factory = "transformer"
+
+[components.transformer.model]
+@architectures = "spacy-transformers.TransformerModel.v3"
+name = "christinbeck/GHisBERT"
+tokenizer_config = {"use_fast": true}
+
+[components.transformer.model.get_spans]
+@span_getters = "spacy-transformers.strided_spans.v1"
+window = 128
+stride = 96
+
+[components.mwt_detector]
+factory = "mwt_detector"
+
+[components.mwt_detector.model]
+@architectures = "spacy.TextCategorizer.v2"
+
+[components.mwt_detector.model.tok2vec]
+@architectures = "spacy-transformers.TransformerListener.v1"
+grad_factor = 1.0
+
+[components.mwt_detector.model.tok2vec.pooling]
+@layers = "reduce_mean.v1"
+
+[paths]
+train = "data/train.spacy"
+dev   = "data/dev.spacy"
+
+[training]
+max_epochs = 10
+seed = 42
+
+[training.optimizer]
+@optimizers = "Adam.v1"
+learn_rate = 0.00005
+
+[training.batcher]
+@batchers = "spacy.batch_by_words.v1"
+discard_oversize = false
+tolerance = 0.2
+
+[training.batcher.size]
+@schedules = "compounding.v1"
+start    = 100
+stop     = 1000
+compound = 1.001
+```
+
+---
+
+## 8. `stage_b_config.cfg` (tagger + morphologizer only)
+
+```ini
+[nlp]
+lang = "de"
+pipeline = ["transformer", "mwt_detector", "mwt_annotator",
+            "tagger", "morphologizer"]
+
+[components]
+
+[components.transformer]
+factory = "transformer"
+
+[components.transformer.model]
+@architectures = "spacy-transformers.TransformerModel.v3"
+name = "christinbeck/GHisBERT"
+tokenizer_config = {"use_fast": true}
+
+[components.transformer.model.get_spans]
+@span_getters = "spacy-transformers.strided_spans.v1"
+window = 128
+stride = 96
+
+[components.mwt_detector]
+factory = "mwt_detector"
+frozen = true
+
+[components.mwt_annotator]
+factory = "mwt_annotator"
+frozen = true
+
+[components.tagger]
+factory = "tagger"
+
+[components.tagger.model]
+@architectures = "spacy.Tagger.v2"
+
+[components.tagger.model.tok2vec]
+@architectures = "spacy-transformers.TransformerListener.v1"
+grad_factor = 1.0
+
+[components.tagger.model.tok2vec.pooling]
+@layers = "reduce_mean.v1"
+
+[components.morphologizer]
+factory = "morphologizer"
+
+[components.morphologizer.model]
+@architectures = "spacy.Morphologizer.v3"
+
+[components.morphologizer.model.tok2vec]
+@architectures = "spacy-transformers.TransformerListener.v1"
+grad_factor = 1.0
+
+[components.morphologizer.model.tok2vec.pooling]
+@layers = "reduce_mean.v1"
+
+[paths]
+train = "data/train.spacy"
+dev   = "data/dev.spacy"
+
+[training]
+max_epochs = 20
+seed = 42
+frozen_components = ["mwt_detector", "mwt_annotator"]
+
+[training.optimizer]
+@optimizers = "Adam.v1"
+learn_rate = 0.00005
+
+[training.batcher]
+@batchers = "spacy.batch_by_words.v1"
+discard_oversize = false
+tolerance = 0.2
+
+[training.batcher.size]
+@schedules = "compounding.v1"
+start    = 100
+stop     = 1000
+compound = 1.001
+```
+
+---
+
+## 9. `stage_c_config.cfg` (senter + sent_type_detector)
+
+```ini
+[nlp]
+lang = "de"
+pipeline = ["transformer", "mwt_detector", "mwt_annotator",
+            "tagger", "morphologizer", "senter", "sent_type_detector"]
+
+# Tagger and morphologizer are frozen — their outputs (token.pos_
+# and token.morph_) are stable symbolic inputs to the senter and
+# sent_type_detector. The POS and morph embedding tables inside
+# ConcatPOSMorphTagger train freely against these stable inputs.
+
+[components]
+
+[components.transformer]
+factory = "transformer"
+frozen  = true
+source  = "output_stage_b/model-best"
+
+[components.mwt_detector]
+factory = "mwt_detector"
+frozen  = true
+source  = "output_stage_b/model-best"
+
+[components.mwt_annotator]
+factory = "mwt_annotator"
+frozen  = true
+source  = "output_stage_b/model-best"
+
+[components.tagger]
+factory = "tagger"
+frozen  = true
+source  = "output_stage_b/model-best"
+
+[components.morphologizer]
+factory = "morphologizer"
+frozen  = true
+source  = "output_stage_b/model-best"
+
+[components.senter]
+factory = "senter"
+
+[components.senter.model]
+@architectures = "custom.ConcatPOSMorphTagger.v1"
+pos_width    = 32
+morph_width  = 64
+hidden_width = 128
+
+[components.senter.model.tok2vec]
+@architectures = "spacy-transformers.TransformerListener.v1"
+grad_factor = 1.0
+
+[components.senter.model.tok2vec.pooling]
+@layers = "reduce_mean.v1"
+
+[components.sent_type_detector]
+factory = "sent_type_detector"
+
+[components.sent_type_detector.model]
+@architectures = "custom.ConcatPOSMorphTagger.v1"
+pos_width    = 32
+morph_width  = 64
+hidden_width = 128
+
+[components.sent_type_detector.model.tok2vec]
+@architectures = "spacy-transformers.TransformerListener.v1"
+grad_factor = 1.0
+
+[components.sent_type_detector.model.tok2vec.pooling]
+@layers = "reduce_mean.v1"
+
+[paths]
+train = "data/train.spacy"
+dev   = "data/dev.spacy"
+
+[training]
+max_epochs = 20
+seed = 42
+frozen_components = [
+    "transformer", "mwt_detector", "mwt_annotator",
+    "tagger", "morphologizer"
+]
+
+[training.optimizer]
+@optimizers = "Adam.v1"
+# Slightly higher LR for Stage C — only senter heads training
+learn_rate = 0.0001
+
+[training.batcher]
+@batchers = "spacy.batch_by_words.v1"
+discard_oversize = false
+tolerance = 0.2
+
+[training.batcher.size]
+@schedules = "compounding.v1"
+start    = 100
+stop     = 1000
+compound = 1.001
+```
+
+---
+
+## 10. Run Training
+
+### Stage A: Train MWT Detector
+
+```bash
+python -m spacy train stage_a_config.cfg \
+    --output ./output_mwt \
+    --gpu-id 0 \
+    --code senter_model.py
+```
+
+### Stage B: Train Tagger + Morphologizer
+
+```bash
+python -m spacy train stage_b_config.cfg \
+    --output ./output_stage_b \
+    --gpu-id 0 \
+    --code senter_model.py \
+    --components.mwt_detector.source  ./output_mwt/model-best \
+    --components.mwt_annotator.source ./output_mwt/model-best
+```
+
+### Stage C: Train Senter + Sent Type Detector
+
+```bash
+python -m spacy train stage_c_config.cfg \
+    --output ./output_stage_c \
+    --gpu-id 0 \
+    --code senter_model.py
+```
+
+---
+
+## 11. Updated Section 9 of `main_script.py`
+
+```python
+    # ------------------------------------------------------------------
+    # 9️⃣  Load Spacy model and process
+    # ------------------------------------------------------------------
+
+    # Import component factories and custom architecture
+    # so spaCy's registry can find them before loading the pipeline
+    from mwt_component import MWTDetector, MWTAnnotator
+    from sent_type_component import SentTypeDetector
+    import senter_model   # registers custom.ConcatPOSMorphTagger.v1
+
+    # Load Stage C pipeline
+    nlp = spacy.load("./output_stage_c/model-best")
+
+    # Replace tokenizer with our custom BertTokenizer
+    nlp.tokenizer = BertTokenizer(nlp.vocab, new_tokenizer)
+
+    @Language.component("attribute_tagging")
+    def attribute_tagger(doc):
+
+        replaced_line_lengths = []
+        for line in cleaned_lines:
+            line_length = 0
+            for word in re.split(r'(\s)', line):
+                if not word:
+                    continue
+                if word.startswith(('¿', '%', '€', '$')):
+                    base_word = word[1:]
+                else:
+                    base_word = word
+                replaced_word, _ = apply_replacements_with_mapping(
+                    base_word, replacements
+                )
+                line_length += len(replaced_word)
+            replaced_line_lengths.append(line_length)
+
+        char_positions = []
+        current_pos = 0
+        for length in replaced_line_lengths:
+            char_positions.append((current_pos, current_pos + length))
+            current_pos += length
+
+        token_offsets      = doc._.token_offsets
+        use_custom_offsets = (
+            token_offsets is not None and len(token_offsets) == len(doc)
+        )
+
+        for i, token in enumerate(doc):
+            if use_custom_offsets:
+                tok_start = token_offsets[i][0]
+            else:
+                tok_start = token.idx
+
+            token._.direct_speech = direct_speech_tags.get(tok_start)
+            token._.original_form = original_forms.get(tok_start)
+
+            for idx, (line_start, line_end) in enumerate(char_positions):
+                if line_start <= tok_start < line_end:
+                    token._.page_number      = page_numbers.get(idx)
+                    token._.book_number      = book_numbers.get(idx)
+                    token._.paragraph_number = paragraph_numbers.get(idx)
+                    if not is_at_line[idx]:
+                        token._.line_number  = line_numbers.get(idx)
+                    break
+
+        return doc
+
+    # Pipeline order at inference time:
+    #   transformer → mwt_detector → mwt_annotator →
+    #   attribute_tagging → tagger → morphologizer →
+    #   senter → sent_type_detector
+    #
+    # mwt_annotator does not modify the token stream so
+    # attribute_tagging offsets are unaffected.
+    # tagger and morphologizer must run before senter and
+    # sent_type_detector so that token.pos_ and token.morph_
+    # are populated for ConcatPOSMorphTagger.
+    nlp.add_pipe("attribute_tagging", before="tagger")
+
+    doc = nlp(text)
+```
+
+---
+
+## 12. Updated Print Loop in `main_script.py`
+
+```python
+    # ------------------------------------------------------------------
+    # Print tokens with attributes
+    # ------------------------------------------------------------------
+    from collections import defaultdict
+
+    mwt_lookup = defaultdict(list)
+    for span in doc.spans.get("mwt_words", []):
+        mwt_lookup[span._.surface_token_idx].append(span)
+
+    for sent in doc.sents:
+        sent_type = sent._.sent_type or "N/A"
+        for token in sent:
+            direct_speech = token._.direct_speech   or "N/A"
+            line_num      = token._.line_number      or "N/A"
+            paragraph_num = token._.paragraph_number or "N/A"
+            book_num      = token._.book_number      or "N/A"
+            page_num      = token._.page_number      or "N/A"
+            original      = token._.original_form    or token.text
+
+            mwt_words = mwt_lookup.get(token.i, [])
+
+            if mwt_words:
+                for span in mwt_words:
+                    print(
+                        f"Token: '{token.text}' "
+                        f"[MWT {span._.word_index + 1}/"
+                        f"{len(mwt_words)}] | "
+                        f"Form: '{span._.word_form}' | "
+                        f"POS: '{span._.word_pos}' | "
+                        f"Morph: '{span._.word_morph}' | "
+                        f"Lemma: '{span._.word_lemma}' | "
+                        f"Line: {line_num} | "
+                        f"Paragraph: {paragraph_num} | "
+                        f"Page: {page_num} | "
+                        f"Book: {book_num} | "
+                        f"Direct Speech: {direct_speech} | "
+                        f"Sent Type: {sent_type}"
+                    )
+            else:
+                print(
+                    f"Token: '{token.text}' | "
+                    f"Original: '{original}' | "
+                    f"POS: '{token.pos_}' | "
+                    f"Line: {line_num} | "
+                    f"Paragraph: {paragraph_num} | "
+                    f"Page: {page_num} | "
+                    f"Book: {book_num} | "
+                    f"Direct Speech: {direct_speech} | "
+                    f"Sent Type: {sent_type}"
+                )
+```
+
+---
+
+## 13. Remove From Top of `main_script.py`
+
+```python
+# Remove these lines — no longer needed:
+from transformers import AutoModelForMaskedLM
+from spacy.cli.init_config import fill_config
+model = AutoModelForMaskedLM.from_pretrained("christinbeck/GHisBERT")
+```
+
+---
+
+## 14. Complete Workflow Summary
+
+```
+1. pip install dependencies
+
+2. python json_to_spacy.py path/to/json/files/
+   → nfc() applied BEFORE replacements throughout
+   → builds expansion table with form/pos/morph/lemma
+   → records sentence boundaries from ALL spans
+   → records sentence type (DE/IE/EE/QE) from span type
+     and token-level punc tags; S* ignored
+   → two docs per source file (form + norm variants)
+   → generates data/train.spacy, data/dev.spacy,
+     data/expansions.json
+
+3. python -m spacy train stage_a_config.cfg \
+       --output ./output_mwt --gpu-id 0 \
+       --code senter_model.py
+   → Stage A: trains MWT boundary detector
+   → sets is_contraction_boundary on ## tokens
+
+4. python -m spacy train stage_b_config.cfg \
+       --output ./output_stage_b --gpu-id 0 \
+       --code senter_model.py \
+       --components.mwt_detector.source  ./output_mwt/model-best \
+       --components.mwt_annotator.source ./output_mwt/model-best
+   → Stage B: trains tagger + morphologizer only
+   → senter not involved at all
+   → produces stable, accurate token.pos_ and token.morph_
+
+5. python -m spacy train stage_c_config.cfg \
+       --output ./output_stage_c --gpu-id 0 \
+       --code senter_model.py
+   → Stage C: trains senter + sent_type_detector
+   → tagger + morphologizer frozen: stable POS/morph inputs
+   → ConcatPOSMorphTagger (PyTorch) concatenates:
+       GHisBERT embeddings
+     + POS tag embeddings (nn.Embedding)
+     + morph feature projections (binary → Linear → ReLU)
+   → passes concatenation through MLP
+   → PyTorch autograd handles all gradient computation
+   → POS/morph tables train against stable frozen inputs
+
+6. python main_script.py <base_name>
+   → loads output_stage_c/model-best
+   → BertTokenizer produces subword tokens
+   → MWT detector flags contraction ## boundaries
+   → MWT annotator creates doc.spans["mwt_words"]
+     (token stream unchanged throughout)
+   → attribute_tagging assigns line/page/book/paragraph
+   → tagger assigns POS tags
+   → morphologizer assigns morphological features
+   → senter detects sentence boundaries using
+     transformer + POS + morph features explicitly
+   → sent_type_detector classifies DE/IE/EE/QE
+     using same feature-rich architecture
+```
+
+---
+
+## Key Design Decisions Summary
+
+| Decision | Reason |
+|---|---|
+| PyTorch (`ConcatPOSMorphTagger.v1`) over pure Thinc | Autograd guarantees correct gradients; easier to debug; shorter code |
+| `senter_model.py` imported via `--code` | Registers architecture with spaCy registry before training |
+| Tagger + morphologizer frozen in Stage C | Their outputs are stable symbolic inputs; POS/morph tables converge reliably |
+| POS/morph embedding tables NOT pre-frozen | Their inputs (token.pos_, token.morph_) are stable; tables train freely against stable inputs |
+| Senter absent from Stage B entirely | No redundant training; clean separation of concerns |
+| Subword tokens left intact throughout | Transformer and TransformerListeners need them; ## are useful tagger signals |
+| MWT annotator creates SpanGroup | Preserves token stream integrity and character offsets |
+| `nfc()` before `apply_replacements()` | Replacement rules see consistent Unicode; case preserved for tagger |
+| `normalise()` for keys only | Lowercase lookup keys; case preserved in training word forms |
+| Two docs per source file (form + norm) | Exposes model to both original and normalised spelling variants |
+| Paired shuffling | Prevents same source document in both train and dev |
+| `S*` excluded from SENT_TYPES | Marks internal clause boundaries, not sentence endings |
+| ALL sentence spans for senter training | Senter needs to learn all clause boundaries |
+| `sent_type_detector` uses same architecture | Sentence type also influenced by morphological patterns |
+| `attribute_tagging` before `tagger` | Metadata available to all downstream components |
+| GHisBERT throughout | Historical German representations benefit all components |
