@@ -277,7 +277,15 @@ def json_to_spacy_docs(json_files, nlp, replacements):
 
             if not words:
                 continue
-
+            
+            for word_idx, word in enumerate(words):
+                if word == "" or word.strip() == "":
+                    vt_id   = token_positions[word_idx]
+                    print(
+                        f"\nEmpty word at index {word_idx} "
+                        f"in file {path} "
+                        f"(virttok={vt_id}, use_norm={use_norm})"
+                    )
             doc = Doc(nlp.vocab, words=words, spaces=spaces)
 
             # ── Per-token attributes ───────────────────────────────────
