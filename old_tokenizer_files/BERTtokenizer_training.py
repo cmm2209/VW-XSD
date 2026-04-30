@@ -20,7 +20,7 @@ tokenizer.normalizer = normalizers.Sequence([normalizers.NFC(),normalizers.Lower
 tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
 
 special_tokens = ["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]
-trainer = trainers.WordPieceTrainer(vocab_size=31787, special_tokens=special_tokens)
+trainer = trainers.WordPieceTrainer(vocab_size=32000, special_tokens=special_tokens)
 tokenizer.train_from_iterator(get_training_corpus(), trainer=trainer)
 
 cls_token_id = tokenizer.token_to_id("[CLS]")

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Remove contractions from BERT tokenizer vocabulary.
+Remove tokens from BERT tokenizer vocabulary.
 
-This script reads a list of contractions from REM_contractions_to_do.json
+This script reads whitespace-separated words from a text file
 and removes any matching tokens from the vocabulary in BERTtokenizer.json.
 """
 
@@ -23,20 +23,16 @@ def save_json_file(data, filepath):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def extract_contraction_forms(contractions_file):
-    """Extract all 'form' values from the contractions JSON file."""
-    contractions_data = load_json_file(contractions_file)
-    forms = set()
-    
-    for entry in contractions_data:
-        if 'form' in entry:
-            forms.add(entry['form'])
-    
-    return forms
+def load_words_from_text(text_file):
+    """Load whitespace-separated words from a text file."""
+    with open(text_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    words = set(content.split())
+    return words
 
 
-def remove_contractions_from_vocab(tokenizer_file, contractions_forms):
-    """Remove contractions from the tokenizer vocabulary."""
+def remove_tokens_from_vocab(tokenizer_file, tokens_to_remove):
+    """Remove specified tokens from the tokenizer vocabulary."""
     tokenizer_data = load_json_file(tokenizer_file)
     
     # Access the vocabulary
@@ -45,9 +41,9 @@ def remove_contractions_from_vocab(tokenizer_file, contractions_forms):
     # Track removed tokens
     removed_tokens = []
     
-    # Remove tokens that match contractions
+    # Remove tokens that match words from the text file
     for token in list(vocab.keys()):
-        if token in contractions_forms:
+        if token in tokens_to_remove:
             removed_tokens.append(token)
             del vocab[token]
     
@@ -57,12 +53,12 @@ def remove_contractions_from_vocab(tokenizer_file, contractions_forms):
 def main():
     # File paths
     tokenizer_file = 'BERTtokenizer.json'
-    contractions_file = 'REM_common_contractions.json'
+    words_file = 'tokenizertest.txt'
     backup_file = 'BERTtokenizer.json.backup'
     
-    print("Loading contractions file...")
-    contractions_forms = extract_contraction_forms(contractions_file)
-    print(f"Found {len(contractions_forms)} unique contractions")
+    print(f"Loading words from {words_file}...")
+    words_to_remove = load_words_from_text(words_file)
+    print(f"Found {len(words_to_remove)} unique words")
     
     print("\nLoading tokenizer file...")
     
@@ -70,9 +66,9 @@ def main():
     print(f"Creating backup: {backup_file}")
     shutil.copy2(tokenizer_file, backup_file)
     
-    # Remove contractions
-    print("Removing contractions from vocabulary...")
-    tokenizer_data, removed_tokens = remove_contractions_from_vocab(tokenizer_file, contractions_forms)
+    # Remove matching tokens
+    print("Removing matching tokens from vocabulary...")
+    tokenizer_data, removed_tokens = remove_tokens_from_vocab(tokenizer_file, words_to_remove)
     
     print(f"\nRemoved {len(removed_tokens)} tokens from vocabulary:")
     for token in removed_tokens[:20]:  # Show first 20
