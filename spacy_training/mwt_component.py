@@ -16,6 +16,17 @@ Token.set_extension("book_number",             default=None,  force=True)
 Token.set_extension("direct_speech",           default=None,  force=True)
 Token.set_extension("original_form",           default=None,  force=True)
 
+# Doc-level extension: records which token ranges were provisionally
+# resegmented by BertTokenizer._override_subword_boundaries().
+# Each entry is a dict:
+#   {
+#     "start_idx": int,   first token index of the resegmented span
+#     "end_idx":   int,   one past the last token index
+#     "surface":   str,   original surface form e.g. "ander"
+#     "analyses":  list,  expansion table analyses
+#   }
+Doc.set_extension("provisional_splits", default=None, force=True)
+
 # ---------------------------------------------------------------------------
 # Span extensions for MWT syntactic words
 # ---------------------------------------------------------------------------
@@ -38,11 +49,20 @@ def create_mwt_detector(nlp, name):
 
 class MWTDetector:
     """
-    Uses GHisBERT contextual embeddings to decide, per ## token,
-    whether it marks a genuine contraction boundary (True)
-    or is normal subword tokenization (False).
+    Decides, for each provisionally resegmented token span, whether
+    it is a genuine contraction (True) or a single word that happened
+    to match a contraction fingerprint (False).
 
-    Sets token._.is_contraction_boundary on each ## token.
+    Operates on doc._.provisional_splits set by BertTokenizer.
+    Uses GHisBERT contextual embeddings (averaged over the span)
+    as input to a learned binary classification head.
+
+    Sets token._.is_contraction_boundary = True on the second (and
+    third, for three-way contractions) token of confirmed splits.
+
+    The transformer has already seen the corrected subword boundaries,
+    so its embeddings reflect the linguistic context of each component
+    word rather than arbitrary WordPiece cuts.
     """
 
     def __init__(self, vocab):
@@ -50,23 +70,29 @@ class MWTDetector:
 
     def __call__(self, doc):
         trf_data = doc._.trf_data
-        if trf_data is None:
+        splits   = doc._.provisional_splits
+
+        if trf_data is None or not splits:
             return doc
 
-        for i, token in enumerate(doc):
-            if token.text.startswith("##"):
-                vec = self._get_boundary_vector(trf_data, i)
-                token._.is_contraction_boundary = self._classify(vec)
+        for split in splits:
+            start    = split["start_idx"]
+            end      = split["end_idx"]
+            vec      = self._pool_span(trf_data, start, end)
+            is_contr = self._classify(vec)
+
+            if is_contr:
+                for boundary_idx in range(start + 1, end):
+                    if boundary_idx < len(doc):
+                        doc[boundary_idx]._.is_contraction_boundary \
+                            = True
 
         return doc
 
-    def _get_boundary_vector(self, trf_data, token_idx):
+    def _pool_span(self, trf_data, start, end):
         last_layer = trf_data.tensors[-1][0]
-        if token_idx > 0:
-            vec = (last_layer[token_idx - 1] + last_layer[token_idx]) / 2
-        else:
-            vec = last_layer[token_idx]
-        return vec
+        span_vecs  = last_layer[start:end]
+        return span_vecs.mean(axis=0)
 
     def _classify(self, vector):
         raise NotImplementedError("Load trained weights via from_disk()")
@@ -89,25 +115,16 @@ def create_mwt_annotator(nlp, name):
 
 class MWTAnnotator:
     """
-    Processes MWT contractions without modifying the token stream.
+    For each confirmed contraction (where is_contraction_boundary
+    has been set by MWTDetector), creates Span entries in
+    doc.spans["mwt_words"] carrying form/pos/morph/lemma for each
+    syntactic word.
 
-    For each contraction (a surface token followed by one or more
-    ## tokens where is_contraction_boundary is True):
-      - Reconstructs the surface form from the root token and its
-        ## pieces
-      - Looks up the expansion table to get per-word analyses
-      - Creates Span entries in doc.spans["mwt_words"] for each
-        syntactic word, carrying form/pos/morph/lemma annotations
+    Uses doc._.provisional_splits to find confirmed contractions.
+    A split is confirmed if any token in its range has
+    is_contraction_boundary = True.
 
-    The subword token stream is left completely intact because:
-      - The transformer and TransformerListeners need the subword
-        tokens to align their inputs correctly
-      - ## prefixes are useful structural signals for the tagger
-      - No downstream component requires a merged stream given
-        that syntactic word annotations live in
-        doc.spans["mwt_words"]
-
-    Non-contraction ## tokens are ignored.
+    The subword token stream is left completely intact.
     """
 
     def __init__(self, vocab, expansions=None):
@@ -115,56 +132,34 @@ class MWTAnnotator:
         self.expansions = expansions or {}
 
     def __call__(self, doc):
+        splits    = doc._.provisional_splits
         mwt_spans = []
 
-        i = 0
-        while i < len(doc):
-            token = doc[i]
+        if splits:
+            for split in splits:
+                start    = split["start_idx"]
+                end      = split["end_idx"]
+                analyses = split["analyses"]
 
-            j               = i + 1
-            subword_indices = []
-            while j < len(doc) and doc[j].text.startswith("##"):
-                subword_indices.append(j)
-                j += 1
-
-            if subword_indices:
-                is_contraction = any(
-                    doc[k]._.is_contraction_boundary
-                    for k in subword_indices
+                is_confirmed = any(
+                    doc[idx]._.is_contraction_boundary
+                    for idx in range(start + 1, end)
+                    if idx < len(doc)
                 )
 
-                if is_contraction:
-                    surface = token.text + "".join(
-                        doc[k].text.lstrip("#")
-                        for k in subword_indices
-                    )
-                    lower = unicodedata.normalize(
-                        "NFC", surface.lower()
-                    )
+                if not is_confirmed:
+                    continue
 
-                    if lower in self.expansions:
-                        analyses = self.expansions[lower]
-                        for word_idx, analysis in enumerate(analyses):
-                            span = doc[token.i : token.i + 1]
-                            span._.word_form         = analysis.get(
-                                "form",  ""
-                            )
-                            span._.word_pos          = analysis.get(
-                                "pos",   "X"
-                            )
-                            span._.word_morph        = analysis.get(
-                                "morph", ""
-                            )
-                            span._.word_lemma        = analysis.get(
-                                "lemma", ""
-                            )
-                            span._.word_index        = word_idx
-                            span._.surface_token_idx = token.i
-                            mwt_spans.append(span)
-
-                i = j
-            else:
-                i += 1
+                root_token = doc[start]
+                for word_idx, analysis in enumerate(analyses):
+                    span = doc[root_token.i : root_token.i + 1]
+                    span._.word_form         = analysis.get("form",  "")
+                    span._.word_pos          = analysis.get("pos",   "X")
+                    span._.word_morph        = analysis.get("morph", "")
+                    span._.word_lemma        = analysis.get("lemma", "")
+                    span._.word_index        = word_idx
+                    span._.surface_token_idx = root_token.i
+                    mwt_spans.append(span)
 
         doc.spans["mwt_words"] = spacy.tokens.SpanGroup(
             doc,

@@ -6,11 +6,11 @@ import unicodedata
 import srsly
 import sys
 from pathlib import Path
-from collections import Counter
 from spacy.tokens import DocBin, Doc, Token, Span
 import spacy
 
 from text_replacements import load_replacements, apply_replacements_with_mapping
+from fingerprints import load_fingerprints
 
 Token.set_extension("is_contraction_boundary", default=False, force=True)
 Token.set_extension("sent_type",               default=None,  force=True)
@@ -21,12 +21,9 @@ Span.set_extension("word_morph",               default=None,  force=True)
 Span.set_extension("word_lemma",               default=None,  force=True)
 Span.set_extension("word_index",               default=None,  force=True)
 Span.set_extension("surface_token_idx",        default=None,  force=True)
+Doc.set_extension("provisional_splits",        default=None,  force=True)
 
 SENT_TYPES = {"DE", "IE", "EE", "QE"}
-
-# Minimum number of times a contraction surface form must appear
-# across the corpus to be included in the expansion table.
-MIN_CONTRACTION_FREQ = 3
 
 
 # ---------------------------------------------------------------------------
@@ -50,88 +47,34 @@ def group_tokens_by_virttok(tokens):
     return order, groups
 
 
-def is_punct_token(tok):
-    """
-    Returns True if this token should be excluded from all join
-    calculations (surface key construction, analyses building,
-    norm pair assembly).  Currently excludes any token whose
-    pos_upos is "PUNCT".
-    """
-    return tok.get("pos_upos", "") == "PUNCT"
-
-
 def is_contraction_group(group):
-    """
-    Quick pre-filter: returns True if any token in the group
-    has a 'join' field at all. Full validation (join directions,
-    PUNCT tokens, minimum length, minimum valid forms) is
-    handled by is_valid_contraction() on the sorted group.
-    """
     return any("join" in t for t in group)
 
 
 def is_valid_field(value):
-    """
-    Returns True if a form or norm field value is non-empty
-    and contains at least one non-whitespace character.
-    """
     return bool(value and value.strip())
 
 
 def is_valid_contraction(sorted_group):
-    """
-    Returns False if the group should NOT be treated as a
-    genuine MWT contraction, for any of the following reasons:
-
-    - Fewer than two tokens total
-    - After removing PUNCT tokens, fewer than two tokens remain
-      (a group that consists of only one content token plus
-      punctuation is not a genuine morphological contraction)
-    - After removing PUNCT tokens, fewer than two tokens have
-      non-empty form fields
-    - After removing PUNCT tokens, there is not at least one
-      join=right/both AND one join=left/both token
-    - The final *non-PUNCT* token (i.e. the last token of the
-      content part) has pos_upos = "PUNCT" — this guard is now
-      redundant given the filtering above but is kept for safety
-
-    All join-direction and form-count checks operate exclusively
-    on the non-PUNCT subset so that attached punctuation cannot
-    masquerade as a contraction component.
-    """
     if len(sorted_group) < 2:
         return False
-
-    # All join-related checks are performed on the non-PUNCT subset
-    non_punct = [t for t in sorted_group if not is_punct_token(t)]
-
-    if len(non_punct) < 2:
-        return False
-
-    # At least two non-PUNCT tokens must have non-empty form fields
     tokens_with_forms = [
-        t for t in non_punct
+        t for t in sorted_group
         if is_valid_field(t.get("form", ""))
     ]
     if len(tokens_with_forms) < 2:
         return False
-
     has_right = any(
-        t.get("join") in ("right", "both") for t in non_punct
+        t.get("join") in ("right", "both") for t in sorted_group
     )
     has_left  = any(
-        t.get("join") in ("left",  "both") for t in non_punct
+        t.get("join") in ("left",  "both") for t in sorted_group
     )
     if not (has_right and has_left):
         return False
-
-    # Safety check: final non-PUNCT token must not itself be PUNCT
-    # (should be unreachable after the filter above, but kept for
-    # defensive correctness)
-    final_pos = non_punct[-1].get("pos_upos", "")
+    final_pos = sorted_group[-1].get("pos_upos", "")
     if final_pos == "PUNCT":
         return False
-
     return True
 
 
@@ -157,36 +100,24 @@ def apply_replacements(text, replacements):
 
 
 def nfc(text):
-    """
-    NFC normalisation only — preserves case.
-    Applied BEFORE replacements so replacement rules see a
-    consistent Unicode form. Case preserved for tagger training.
-    """
+    """NFC normalisation only — preserves case."""
     return unicodedata.normalize("NFC", text)
 
 
 def normalise(text):
-    """
-    NFC normalisation + lowercase.
-    Used for expansion table lookup keys only — never for
-    word forms stored in training docs.
-    Applied BEFORE replacements.
-    """
+    """NFC normalisation + lowercase. For lookup keys only."""
     return unicodedata.normalize("NFC", text).lower()
 
 
+def normalise_pos(pos: str) -> str:
+    """
+    Ensures POS tag is uppercase as required by spaCy's UD validator.
+    e.g. "adp" -> "ADP", "NOUN" -> "NOUN"
+    """
+    return pos.upper() if pos else "X"
+
+
 def get_raw(tok, use_norm):
-    """
-    Returns the appropriate raw string for a token given whether
-    we are using norm or form values.
-
-    For norm variant: uses "norm" field if present and non-empty,
-    otherwise falls back to "form" field.
-    For form variant: uses "form" field directly.
-
-    Returns None if the selected field is empty or absent,
-    so the caller can skip this token.
-    """
     if use_norm:
         norm = tok.get("norm", "")
         if is_valid_field(norm):
@@ -199,247 +130,28 @@ def get_raw(tok, use_norm):
 
 
 # ---------------------------------------------------------------------------
-# Build expansion dictionary
+# Build analyses list
 # ---------------------------------------------------------------------------
 
 def make_analyses(parts_iter, replacements):
-    """
-    Build a list of analysis dicts from an iterable of
-    (tok, raw_form) pairs.
-    Each dict has keys: form, pos, morph, lemma.
-    nfc() applied BEFORE replacements.
-    Tokens with empty or blank form fields are skipped.
-    PUNCT tokens are excluded by the caller before reaching here.
-    """
     analyses = []
     for tok, raw_form in parts_iter:
-
         if not is_valid_field(raw_form):
             continue
-
         feats     = tok.get("feats_ud", {})
         morph_str = "|".join(
             f"{k}={v}" for k, v in sorted(feats.items())
         ) if feats else ""
-
         replaced_form = apply_replacements(nfc(raw_form), replacements)
-
         if not replaced_form:
             replaced_form = nfc(raw_form) if nfc(raw_form) else "□"
-
         analyses.append({
             "form":  replaced_form,
-            "pos":   tok.get("pos_upos", "X"),
+            "pos":   normalise_pos(tok.get("pos_upos", "X")),
             "morph": morph_str,
             "lemma": tok.get("lemma", raw_form),
         })
     return analyses
-
-
-def _non_punct_norm_pairs(sorted_group):
-    """
-    Build the list of (tok, raw_string) pairs for the norm-surface
-    key, excluding any token whose pos_upos is "PUNCT".
-
-    For each non-PUNCT token: use "norm" if non-empty, else "form".
-    Returns a list of (tok, str) pairs; entries with no usable
-    string are omitted.
-    """
-    pairs = []
-    for t in sorted_group:
-        if is_punct_token(t):
-            continue
-        norm = t.get("norm", "")
-        if is_valid_field(norm):
-            pairs.append((t, norm))
-        else:
-            form = t.get("form", "")
-            if is_valid_field(form):
-                pairs.append((t, form))
-    return pairs
-
-
-def count_contraction_frequencies(json_files, replacements):
-    """
-    First pass: count how many times each candidate contraction
-    surface key appears across all files.
-
-    Returns a Counter mapping normalised surface key → frequency.
-
-    Both the form-surface key and the norm-surface key are counted
-    independently, since either may appear at inference time.
-
-    PUNCT tokens are excluded from norm-surface key construction.
-    """
-    freq = Counter()
-
-    for file_idx, path in enumerate(json_files):
-        print(
-            f"Counting contractions: {file_idx + 1}/{len(json_files)}",
-            end="\r", flush=True
-        )
-
-        data       = load_json_file(path)
-        tokens     = data["token"]
-        token_dipl = data.get("token_dipl", [])
-
-        order, groups = group_tokens_by_virttok(tokens)
-
-        for vt_id in order:
-            group = groups[vt_id]
-
-            if not is_contraction_group(group):
-                continue
-
-            sorted_group = sort_group(group)
-
-            if not is_valid_contraction(sorted_group):
-                continue
-
-            # Count form-surface key (uses the diplomatic surface
-            # form from token_dipl — no per-token PUNCT filtering
-            # needed here as it is a single surface string)
-            surface_raw = get_surface_form(vt_id, token_dipl)
-            key_orig    = None
-            if surface_raw is not None:
-                key_orig = apply_replacements(
-                    normalise(surface_raw), replacements
-                )
-                if not key_orig:
-                    key_orig = normalise(surface_raw)
-                if key_orig:
-                    freq[key_orig] += 1
-
-            # Count norm-surface key — PUNCT tokens excluded
-            norm_pairs = _non_punct_norm_pairs(sorted_group)
-
-            if norm_pairs:
-                norm_surface = "".join(pair[1] for pair in norm_pairs)
-                key_norm     = apply_replacements(
-                    normalise(norm_surface), replacements
-                )
-                if not key_norm:
-                    key_norm = normalise(norm_surface)
-                if key_norm and key_norm != key_orig:
-                    freq[key_norm] += 1
-
-    print()
-    return freq
-
-
-def build_expansions_from_json(json_files, replacements,
-                               freq, min_freq=MIN_CONTRACTION_FREQ):
-    """
-    Second pass: build expansion dictionary from all JSON files,
-    only including entries whose surface key appears at least
-    min_freq times in the corpus (as counted by
-    count_contraction_frequencies()).
-
-    For each qualifying contraction, creates TWO entries:
-      1. apply_replacements(normalise(form surface)) → form analyses
-      2. apply_replacements(normalise(norm surface)) → norm analyses
-
-    normalise() (NFC + lowercase) is applied BEFORE replacements
-    so that replacement rules see a consistent Unicode form.
-
-    PUNCT tokens are excluded from all join calculations (form
-    parts, norm pairs, analyses construction).
-
-    Groups are excluded if:
-      - Their surface key appears fewer than min_freq times
-      - They lack both join=right/both and join=left/both tokens
-        among non-PUNCT tokens
-      - Fewer than two non-PUNCT tokens have non-empty form fields
-      - Any token with pos_upos = "PUNCT" is present in the group
-        (handled by excluding such tokens from analysis, not by
-        rejecting the whole group)
-      - They have no surface form in token_dipl
-      - The resulting analyses list has fewer than two entries
-    """
-    expansions = {}
-
-    for file_idx, path in enumerate(json_files):
-        print(
-            f"Building expansions: {file_idx + 1}/{len(json_files)}",
-            end="\r", flush=True
-        )
-
-        data       = load_json_file(path)
-        tokens     = data["token"]
-        token_dipl = data.get("token_dipl", [])
-
-        order, groups = group_tokens_by_virttok(tokens)
-
-        for vt_id in order:
-            group = groups[vt_id]
-
-            if not is_contraction_group(group):
-                continue
-
-            sorted_group = sort_group(group)
-
-            if not is_valid_contraction(sorted_group):
-                continue
-
-            surface_raw = get_surface_form(vt_id, token_dipl)
-            if surface_raw is None:
-                continue
-
-            # ── Entry 1: form surface → form analyses ─────────────────
-            key_orig = apply_replacements(
-                normalise(surface_raw), replacements
-            )
-            if not key_orig:
-                key_orig = normalise(surface_raw)
-
-            # Skip if this key does not meet the frequency threshold
-            if freq.get(key_orig, 0) <= min_freq:
-                continue
-
-            # Exclude PUNCT tokens from form parts
-            form_parts = [
-                (t, t["form"])
-                for t in sorted_group
-                if not is_punct_token(t)
-                and is_valid_field(t.get("form", ""))
-            ]
-            analyses_1 = make_analyses(form_parts, replacements)
-
-            if len(analyses_1) < 2:
-                continue
-
-            if key_orig not in expansions:
-                expansions[key_orig] = analyses_1
-
-            # ── Entry 2: norm surface → norm analyses ──────────────────
-            # Exclude PUNCT tokens from norm pairs
-            norm_pairs = _non_punct_norm_pairs(sorted_group)
-
-            if not norm_pairs:
-                continue
-
-            norm_surface = "".join(pair[1] for pair in norm_pairs)
-            key_norm     = apply_replacements(
-                normalise(norm_surface), replacements
-            )
-            if not key_norm:
-                key_norm = normalise(norm_surface)
-
-            # Skip norm key if it does not meet the frequency threshold
-            if freq.get(key_norm, 0) <= min_freq:
-                continue
-
-            analyses_2 = make_analyses(norm_pairs, replacements)
-
-            if len(analyses_2) < 2:
-                continue
-
-            if (key_norm not in expansions
-                    and key_norm != key_orig):
-                expansions[key_norm] = analyses_2
-
-    print()
-    return expansions
 
 
 # ---------------------------------------------------------------------------
@@ -447,14 +159,6 @@ def build_expansions_from_json(json_files, replacements,
 # ---------------------------------------------------------------------------
 
 def build_sent_type_map(sentences):
-    """
-    Returns two dicts keyed by 1-based virtual token index:
-      sent_start_type[i] = type for sentence beginning at token i
-      sent_end_type[i]   = type for sentence ending at token i
-
-    Only DE, IE, EE, QE types are recorded.
-    S* and all other values are ignored.
-    """
     sent_start_type = {}
     sent_end_type   = {}
     for sent in sentences:
@@ -470,25 +174,26 @@ def build_sent_type_map(sentences):
 # Convert JSON documents to spaCy Docs
 # ---------------------------------------------------------------------------
 
-def json_to_spacy_docs(json_files, nlp, replacements):
+def json_to_spacy_docs(json_files, nlp, replacements, fingerprints):
     """
     Convert JSON files to spaCy Doc objects.
 
+    Applies the same subword boundary correction that BertTokenizer
+    applies at inference time, so that training docs reflect the
+    token representations the MWT detector will actually see.
+
     For each source document produces TWO docs:
       1. Using original 'form' values
-      2. Using normalised 'norm' values (falling back to 'form'
-         if 'norm' is empty or absent)
+      2. Using normalised 'norm' values
 
-    Order of operations for word forms:
-      nfc() first (NFC only, preserves case) → apply_replacements()
-
-    Tokens with empty or blank form/norm fields are skipped.
-    Contraction groups that fail is_valid_contraction() are not
-    treated as MWT contractions.
-    PUNCT tokens are excluded from all join/MWT span calculations.
-    Subword token stream left intact throughout.
-    S* punc tags ignored for sentence typing.
+    S* punc tags are ignored for sentence typing throughout.
     """
+    # Build surface-level lookup from fingerprints once
+    surface_lookup = {
+        entry["surface"]: (fp, entry)
+        for fp, entry in fingerprints.items()
+    }
+
     docs = []
 
     for file_idx, path in enumerate(json_files):
@@ -516,13 +221,14 @@ def json_to_spacy_docs(json_files, nlp, replacements):
 
         for use_norm in (False, True):
 
-            words                   = []
-            spaces                  = []
-            pos_tags                = []
-            morph_feats             = []
-            is_contraction_boundary = []
-            token_positions         = []
-            word_punc               = []
+            # ── Build raw word list ────────────────────────────────────
+            raw_words                   = []
+            raw_spaces                  = []
+            raw_pos_tags                = []
+            raw_morph_feats             = []
+            raw_is_contraction_boundary = []
+            raw_token_positions         = []
+            raw_word_punc               = []
 
             for i, vt_id in enumerate(order):
                 group          = groups[vt_id]
@@ -530,52 +236,128 @@ def json_to_spacy_docs(json_files, nlp, replacements):
                 sorted_group   = sort_group(group) if is_contraction \
                                  else group
 
-                # Apply full contraction validation
-                if is_contraction and not is_valid_contraction(sorted_group):
+                if is_contraction and \
+                        not is_valid_contraction(sorted_group):
                     is_contraction = False
 
                 for j, tok in enumerate(sorted_group):
-
                     raw = get_raw(tok, use_norm)
                     if raw is None:
                         continue
 
                     nfc_raw = nfc(raw)
                     word    = apply_replacements(nfc_raw, replacements)
-
                     if not word:
                         word = nfc_raw if nfc_raw else "□"
 
-                    words.append(word)
-                    pos_tags.append(tok.get("pos_upos", "X"))
-                    morph_feats.append(tok.get("feats_ud", {}))
-                    token_positions.append(vt_id)
+                    raw_words.append(word)
+                    raw_pos_tags.append(
+                        normalise_pos(tok.get("pos_upos", "X"))
+                    )
+                    raw_morph_feats.append(tok.get("feats_ud", {}))
+                    raw_token_positions.append(vt_id)
 
                     token_type  = tok.get("token_type", "")
                     is_boundary = (
                         is_contraction and token_type in ("MS2", "MS3")
                     )
-                    is_contraction_boundary.append(is_boundary)
+                    raw_is_contraction_boundary.append(is_boundary)
 
                     if j == len(sorted_group) - 1:
                         punc = tok.get("punc", "")
-                        word_punc.append(
+                        raw_word_punc.append(
                             punc if punc in SENT_TYPES else ""
                         )
                     else:
-                        word_punc.append("")
+                        raw_word_punc.append("")
 
                     if j < len(sorted_group) - 1:
-                        spaces.append(False)
+                        raw_spaces.append(False)
                     elif i < len(order) - 1:
-                        spaces.append(True)
+                        raw_spaces.append(True)
                     else:
-                        spaces.append(False)
+                        raw_spaces.append(False)
+
+            if not raw_words:
+                continue
+
+            # ── Apply subword override ─────────────────────────────────
+            # Simulates BertTokenizer._override_subword_boundaries()
+            # so training docs match inference-time token representations.
+            words                   = []
+            spaces_final            = []
+            pos_tags                = []
+            morph_feats             = []
+            is_contraction_boundary = []
+            token_positions         = []
+            word_punc               = []
+            provisional_info        = []
+
+            word_idx = 0
+            while word_idx < len(raw_words):
+                word = raw_words[word_idx]
+                key  = normalise(word)
+
+                if key in surface_lookup:
+                    fp, entry    = surface_lookup[key]
+                    correct_subs = entry.get("correct_subwords")
+
+                    if correct_subs is not None:
+                        start_sub_idx = len(words)
+                        provisional_info.append({
+                            "start_idx": start_sub_idx,
+                            "end_idx":   start_sub_idx + len(correct_subs),
+                            "surface":   entry["surface"],
+                            "analyses":  entry["analyses"],
+                        })
+
+                        for sub_idx, sub in enumerate(correct_subs):
+                            words.append(sub)
+                            pos_tags.append(raw_pos_tags[word_idx])
+                            morph_feats.append(
+                                raw_morph_feats[word_idx]
+                            )
+                            token_positions.append(
+                                raw_token_positions[word_idx]
+                            )
+                            word_punc.append(
+                                raw_word_punc[word_idx]
+                                if sub_idx == len(correct_subs) - 1
+                                else ""
+                            )
+                            is_boundary = (
+                                raw_is_contraction_boundary[word_idx]
+                                or sub_idx > 0
+                            )
+                            is_contraction_boundary.append(is_boundary)
+
+                            if sub_idx < len(correct_subs) - 1:
+                                spaces_final.append(False)
+                            else:
+                                spaces_final.append(
+                                    raw_spaces[word_idx]
+                                )
+
+                        word_idx += 1
+                        continue
+
+                # No override — keep word as-is
+                words.append(word)
+                pos_tags.append(raw_pos_tags[word_idx])
+                morph_feats.append(raw_morph_feats[word_idx])
+                token_positions.append(raw_token_positions[word_idx])
+                word_punc.append(raw_word_punc[word_idx])
+                is_contraction_boundary.append(
+                    raw_is_contraction_boundary[word_idx]
+                )
+                spaces_final.append(raw_spaces[word_idx])
+                word_idx += 1
 
             if not words:
                 continue
 
-            doc = Doc(nlp.vocab, words=words, spaces=spaces)
+            doc = Doc(nlp.vocab, words=words, spaces=spaces_final)
+            doc._.provisional_splits = provisional_info
 
             # ── Per-token attributes ───────────────────────────────────
             for token, pos, feats, is_boundary in zip(
@@ -591,9 +373,9 @@ def json_to_spacy_docs(json_files, nlp, replacements):
 
             # ── Sentence boundaries ────────────────────────────────────
             virttok_to_word_idx = {}
-            for word_idx, vt_id in enumerate(token_positions):
+            for w_idx, vt_id in enumerate(token_positions):
                 if vt_id not in virttok_to_word_idx:
-                    virttok_to_word_idx[vt_id] = word_idx
+                    virttok_to_word_idx[vt_id] = w_idx
 
             sent_start_word_idxs = set()
             if sentences:
@@ -609,19 +391,20 @@ def json_to_spacy_docs(json_files, nlp, replacements):
 
             # ── Sentence type labels ───────────────────────────────────
             word_idx_to_sent_end_type = {}
-            for word_idx, vt_id in enumerate(token_positions):
+            for w_idx, vt_id in enumerate(token_positions):
                 pos_1based = virttok_to_pos.get(vt_id)
                 if pos_1based in sent_end_type:
-                    word_idx_to_sent_end_type[word_idx] = \
+                    word_idx_to_sent_end_type[w_idx] = \
                         sent_end_type[pos_1based]
 
-            for word_idx, punc in enumerate(word_punc):
+            for w_idx, punc in enumerate(word_punc):
                 if (punc in SENT_TYPES
-                        and word_idx not in word_idx_to_sent_end_type):
-                    word_idx_to_sent_end_type[word_idx] = punc
+                        and w_idx not in word_idx_to_sent_end_type):
+                    word_idx_to_sent_end_type[w_idx] = punc
 
-            for word_idx, stype in word_idx_to_sent_end_type.items():
-                doc[word_idx]._.sent_type = stype
+            for w_idx, stype in word_idx_to_sent_end_type.items():
+                if w_idx < len(doc):
+                    doc[w_idx]._.sent_type = stype
 
             for sent in doc.sents:
                 for tok in reversed(list(sent)):
@@ -631,57 +414,20 @@ def json_to_spacy_docs(json_files, nlp, replacements):
 
             # ── MWT word spans ─────────────────────────────────────────
             mwt_spans = []
-            word_idx  = 0
-
-            for vt_id in order:
-                group          = groups[vt_id]
-                is_contraction = is_contraction_group(group)
-                sorted_group   = sort_group(group) if is_contraction \
-                                 else group
-
-                # Apply full contraction validation
-                if is_contraction and not is_valid_contraction(sorted_group):
-                    is_contraction = False
-
-                if is_contraction and word_idx < len(doc):
-                    token = doc[word_idx]
-
-                    # Exclude PUNCT tokens from norm pairs for MWT spans
-                    norm_pairs = _non_punct_norm_pairs(sorted_group)
-
-                    if norm_pairs:
-                        if use_norm:
-                            parts = norm_pairs
-                        else:
-                            # Exclude PUNCT tokens from form parts too
-                            parts = [
-                                (t, t["form"])
-                                for t in sorted_group
-                                if not is_punct_token(t)
-                                and is_valid_field(t.get("form", ""))
-                            ]
-                        analyses = make_analyses(parts, replacements)
-
-                        # Only create MWT spans if at least two
-                        # analyses were produced
-                        if len(analyses) >= 2:
-                            for analysis_idx, analysis in enumerate(
-                                analyses
-                            ):
-                                span = doc[token.i : token.i + 1]
-                                span._.word_form         = analysis["form"]
-                                span._.word_pos          = analysis["pos"]
-                                span._.word_morph        = analysis["morph"]
-                                span._.word_lemma        = analysis["lemma"]
-                                span._.word_index        = analysis_idx
-                                span._.surface_token_idx = token.i
-                                mwt_spans.append(span)
-
-                # Advance word_idx by the number of tokens in this
-                # group that were actually added to words[]
-                for tok in sorted_group:
-                    if get_raw(tok, use_norm) is not None:
-                        word_idx += 1
+            for split in provisional_info:
+                start    = split["start_idx"]
+                analyses = split["analyses"]
+                if start < len(doc):
+                    root_token = doc[start]
+                    for analysis_idx, analysis in enumerate(analyses):
+                        span = doc[root_token.i : root_token.i + 1]
+                        span._.word_form         = analysis["form"]
+                        span._.word_pos          = analysis["pos"]
+                        span._.word_morph        = analysis["morph"]
+                        span._.word_lemma        = analysis["lemma"]
+                        span._.word_index        = analysis_idx
+                        span._.surface_token_idx = root_token.i
+                        mwt_spans.append(span)
 
             doc.spans["mwt_words"] = spacy.tokens.SpanGroup(
                 doc,
@@ -714,25 +460,39 @@ def main():
     replacements = load_replacements("replacements.json")
     print("Loaded replacements.json.")
 
-    # First pass: count contraction frequencies
-    freq = count_contraction_frequencies(json_files, replacements)
-    print(
-        f"Found {len(freq)} distinct contraction surface keys "
-        f"before frequency filtering."
-    )
+    # ── Load expansion table ───────────────────────────────────────────
+    expansions_path = output_dir / "expansions.json"
+    if not expansions_path.exists():
+        print(
+            f"ERROR: {expansions_path} not found.\n"
+            f"expansions.json must already exist in data/."
+        )
+        sys.exit(1)
 
-    # Second pass: build expansion table with frequency filter
-    expansions = build_expansions_from_json(
-        json_files, replacements, freq, min_freq=MIN_CONTRACTION_FREQ
-    )
-    srsly.write_json(output_dir / "expansions.json", expansions)
-    print(
-        f"Built expansion table with {len(expansions)} entries "
-        f"(minimum frequency: {MIN_CONTRACTION_FREQ})."
-    )
+    print(f"Loading expansions from {expansions_path} ...")
+    expansions = srsly.read_json(str(expansions_path))
+    print(f"  Loaded {len(expansions)} expansion entries.")
 
+    # ── Load fingerprints ──────────────────────────────────────────────
+    fingerprints_path = output_dir / "fingerprints.json"
+    if not fingerprints_path.exists():
+        print(
+            f"ERROR: {fingerprints_path} not found.\n"
+            f"Run fingerprints.py first:\n"
+            f"  python fingerprints.py \\\n"
+            f"      --expansions {expansions_path} \\\n"
+            f"      --tokenizer  BERTtokenizer.json \\\n"
+            f"      --output     {fingerprints_path}"
+        )
+        sys.exit(1)
+
+    fingerprints = load_fingerprints(str(fingerprints_path))
+
+    # ── Convert to spaCy docs ──────────────────────────────────────────
     nlp  = spacy.blank("de")
-    docs = json_to_spacy_docs(json_files, nlp, replacements)
+    docs = json_to_spacy_docs(
+        json_files, nlp, replacements, fingerprints
+    )
     print(
         f"Converted {len(docs)} documents "
         f"({len(json_files)} source files × 2 variants)."

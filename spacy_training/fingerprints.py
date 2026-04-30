@@ -28,7 +28,7 @@ Usage
       --output      data/fingerprints.json
 
 Or import and call directly:
-  from fingerprints import build_and_save_fingerprints, load_fingerprints
+  from fingerprints import load_fingerprints
 """
 
 import argparse
@@ -80,8 +80,8 @@ def compute_correct_subwords(
 
     The result may have a different number of tokens than the
     original WordPiece tokenization of the surface form — this is
-    acceptable and expected. The pipeline uses this sequence to
-    override the tokenizer's output regardless of length difference.
+    acceptable. The pipeline uses this sequence to override the
+    tokenizer's output regardless of length difference.
 
     Convention:
       - Very first subword of the sequence: no ## prefix
@@ -101,37 +101,17 @@ def compute_correct_subwords(
       "c"  -> ["c"]
       "ir" -> ["ir"]
     result: ["vn", "##c", "##ir"]
-
-    Example (component with multiple subwords)
-    ------------------------------------------
-    components: ["un", "derstanding"]
-      "un"          -> ["un"]
-      "derstanding" -> ["der", "##standing"]
-    result: ["un", "##der", "##standing"]
-
-    Parameters
-    ----------
-    analyses  : list of analysis dicts (form/pos/morph/lemma)
-    tokenizer : HuggingFace tokenizer instance
-
-    Returns
-    -------
-    correct_subs : list of str — always returned, never None
     """
     component_forms = [a["form"] for a in analyses]
 
-    # Re-tokenize each component independently
     component_subwords = []
     for form in component_forms:
         toks = tokenize(form, tokenizer)
         if toks:
             component_subwords.append(toks)
         else:
-            # If tokenizer returns nothing for a component
-            # (very unusual), use the form itself as a single token
             component_subwords.append([normalise(form)])
 
-    # Build corrected sequence with ## convention
     corrected     = []
     first_overall = True
 
@@ -139,7 +119,6 @@ def compute_correct_subwords(
         for sub in comp_subs:
             stripped = sub.lstrip("#")
             if not stripped:
-                # Skip genuinely empty pieces
                 continue
             if first_overall:
                 corrected.append(stripped)
@@ -158,26 +137,23 @@ def build_fingerprint_entries(
     Builds the full fingerprint entry dict from expansions.
 
     Returns a dict keyed by surface form. Each value is a dict with:
-      original_subwords : list of str — tokenizer output for surface
-      correct_subwords  : list of str — component-respecting subwords
-      analyses          : list of dicts — form/pos/morph/lemma
-      correction_needed : bool — True if original != correct
+      original_subwords : list of str
+      correct_subwords  : list of str
+      analyses          : list of dicts
+      correction_needed : bool
     """
     entries = {}
     skipped = 0
 
     for surface_key, analyses in expansions.items():
 
-        # Tokenize the surface key as a whole
         original_subs = tokenize(surface_key, tokenizer)
 
         if not original_subs:
             skipped += 1
             continue
 
-        # Compute component-respecting subword sequence
-        correct_subs = compute_correct_subwords(analyses, tokenizer)
-
+        correct_subs      = compute_correct_subwords(analyses, tokenizer)
         correction_needed = (correct_subs != original_subs)
 
         entries[surface_key] = {
@@ -200,21 +176,17 @@ def build_fingerprint_entries(
 
 def save_fingerprints(entries: dict, output_path: str) -> None:
     """
-    Writes the fingerprint entries to a JSON file, sorted by
-    surface key for easier navigation.
-
-    Also writes a companion file containing only entries where
-    correction_needed is True, for focused review.
+    Writes fingerprint entries to a JSON file sorted by surface key.
+    Also writes a companion file of entries where correction_needed
+    is True, for focused review.
     """
-    output_path = Path(output_path)
-
-    # Main file: all entries sorted by surface key
+    output_path    = Path(output_path)
     sorted_entries = dict(sorted(entries.items()))
+
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(sorted_entries, f, ensure_ascii=False, indent=2)
     print(f"Wrote {len(entries)} entries to {output_path}.")
 
-    # Companion file: only entries where a correction is applied
     correction_entries = {
         k: v for k, v in sorted_entries.items()
         if v["correction_needed"]
@@ -240,20 +212,15 @@ def load_fingerprints_from_file(fingerprints_path: str) -> dict:
     Loads fingerprints.json and converts it to the runtime lookup
     format used by BertTokenizer._override_subword_boundaries().
 
-    The runtime format maps:
+    Runtime format maps:
       subword_tuple -> {
           "surface":          str,
           "analyses":         list of dicts,
           "correct_subwords": list of str or None,
       }
 
-    Entries where correct_subwords is null (disabled by the user
-    during manual review) are excluded from the runtime lookup.
-
-    Entries where correction_needed is False are included — the
-    BertTokenizer will match them but apply no text change, which
-    is harmless and ensures the provisional_splits list is
-    populated for the MWT detector.
+    Entries where correct_subwords is null (disabled by user)
+    are excluded from the runtime lookup.
     """
     with open(fingerprints_path, encoding="utf-8") as f:
         raw = json.load(f)
@@ -271,15 +238,12 @@ def load_fingerprints_from_file(fingerprints_path: str) -> dict:
             skipped += 1
             continue
 
-        # User has set correct_subwords to null to disable this entry
         if correct_subs is None:
             disabled += 1
             continue
 
         fp = tuple(original_subs)
 
-        # If two surface keys produce the same fingerprint,
-        # keep the first one
         if fp not in fingerprints:
             fingerprints[fp] = {
                 "surface":          surface_key,
@@ -297,9 +261,16 @@ def load_fingerprints_from_file(fingerprints_path: str) -> dict:
     return fingerprints
 
 
-# ---------------------------------------------------------------------------
-# Convenience functions called from other modules
-# ---------------------------------------------------------------------------
+def load_fingerprints(fingerprints_path: str) -> dict:
+    """
+    Load a reviewed fingerprints.json and return the runtime
+    lookup dict. Use this in main_script.py and json_to_spacy.py.
+    """
+    print(f"Loading fingerprints from {fingerprints_path} ...")
+    fingerprints = load_fingerprints_from_file(fingerprints_path)
+    print(f"  Loaded {len(fingerprints)} runtime fingerprints.")
+    return fingerprints
+
 
 def build_and_save_fingerprints(
     expansions_path: str,
@@ -307,22 +278,8 @@ def build_and_save_fingerprints(
     output_path:     str,
 ) -> dict:
     """
-    Full pipeline:
-      1. Load expansions.json
-      2. Load HuggingFace tokenizer
-      3. Build fingerprint entries
-      4. Save to output_path and companion corrections file
-      5. Return runtime fingerprint lookup dict
-
-    Parameters
-    ----------
-    expansions_path : path to expansions.json
-    tokenizer_path  : path to BERTtokenizer.json
-    output_path     : path to write fingerprints.json
-
-    Returns
-    -------
-    fingerprints : runtime lookup dict for BertTokenizer
+    Convenience function: load expansions, build fingerprints,
+    save to file, return runtime lookup dict.
     """
     print(f"Loading expansions from {expansions_path} ...")
     expansions = srsly.read_json(expansions_path)
@@ -345,38 +302,20 @@ def build_and_save_fingerprints(
     return fingerprints
 
 
-def load_fingerprints(fingerprints_path: str) -> dict:
-    """
-    Load a previously saved (and optionally edited) fingerprints.json
-    and return the runtime lookup dict.
-
-    Use this at inference time (in main_script.py) after you have
-    reviewed and optionally edited fingerprints.json.
-    """
-    print(f"Loading fingerprints from {fingerprints_path} ...")
-    fingerprints = load_fingerprints_from_file(fingerprints_path)
-    print(f"  Loaded {len(fingerprints)} runtime fingerprints.")
-    return fingerprints
-
-
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 
 def print_summary(entries: dict) -> None:
-    """
-    Prints a summary of the fingerprint entries.
-    """
-    total             = len(entries)
-    needs_correction  = sum(
+    total            = len(entries)
+    needs_correction = sum(
         1 for e in entries.values() if e["correction_needed"]
     )
-    no_change_needed  = total - needs_correction
-
+    no_change        = total - needs_correction
     print(f"\n── Fingerprint Summary ──────────────────────────────")
-    print(f"  Total entries:            {total}")
-    print(f"  No correction needed:     {no_change_needed}")
-    print(f"  Correction will be applied: {needs_correction}")
+    print(f"  Total entries:               {total}")
+    print(f"  No correction needed:        {no_change}")
+    print(f"  Correction will be applied:  {needs_correction}")
     print(f"────────────────────────────────────────────────────\n")
 
 
@@ -395,24 +334,22 @@ def main():
     parser.add_argument(
         "--expansions",
         default="data/expansions.json",
-        help="Path to expansions.json (default: data/expansions.json)"
+        help="Path to expansions.json"
     )
     parser.add_argument(
         "--tokenizer",
         default="BERTtokenizer.json",
-        help="Path to BERTtokenizer.json "
-             "(default: BERTtokenizer.json)"
+        help="Path to BERTtokenizer.json"
     )
     parser.add_argument(
         "--output",
         default="data/fingerprints.json",
-        help="Path to write fingerprints.json "
-             "(default: data/fingerprints.json)"
+        help="Path to write fingerprints.json"
     )
     parser.add_argument(
         "--summary",
         action="store_true",
-        help="Print a summary of entries after building"
+        help="Print a summary after building"
     )
     args = parser.parse_args()
 
@@ -434,11 +371,9 @@ def main():
         print_summary(entries)
 
     print("\nDone.")
-    print(f"Review {args.output} and edit correct_subwords as needed.")
     print(
-        "Set correct_subwords to null for any entry you want to "
-        "disable. When ready, the pipeline will load from this "
-        "file via load_fingerprints()."
+        f"Review {args.output} and edit correct_subwords as needed.\n"
+        f"Set correct_subwords to null to disable any entry."
     )
 
 

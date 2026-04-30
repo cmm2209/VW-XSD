@@ -392,25 +392,46 @@ def main():
     # ------------------------------------------------------------------
     # 9️⃣  Load Spacy model and process
     # ------------------------------------------------------------------
-    nlp = spacy.load("de_dep_news_trf")
-    nlp.tokenizer = BertTokenizer(nlp.vocab, new_tokenizer)
+        # ------------------------------------------------------------------
+    # 9️⃣  Load Spacy model and process
+    # ------------------------------------------------------------------
+
+    # Import component factories and custom architecture
+    from mwt_component import MWTDetector, MWTAnnotator
+    from sent_type_component import SentTypeDetector
+    import senter_model   # registers custom.ConcatPOSMorphTagger.v1
+    from fingerprints import load_fingerprints
+
+    # Load fingerprints from the reviewed file
+    fingerprints = load_fingerprints("data/fingerprints.json")
+
+    # Load Stage C pipeline
+    nlp = spacy.load("./output_stage_c/model-best")
+
+    # Replace tokenizer with our custom BertTokenizer,
+    # passing fingerprints for subword boundary correction
+    nlp.tokenizer = BertTokenizer(
+        nlp.vocab,
+        new_tokenizer,
+        fingerprints=fingerprints
+    )
 
     @Language.component("attribute_tagging")
     def attribute_tagger(doc):
 
         replaced_line_lengths = []
         for line in cleaned_lines:
-            # Replicate step 8 exactly, word by word
             line_length = 0
             for word in re.split(r'(\s)', line):
                 if not word:
                     continue
-                # Strip direct speech marker
                 if word.startswith(('¿', '%', '€', '$')):
                     base_word = word[1:]
                 else:
                     base_word = word
-                replaced_word, _ = apply_replacements_with_mapping(base_word, replacements)
+                replaced_word, _ = apply_replacements_with_mapping(
+                    base_word, replacements
+                )
                 line_length += len(replaced_word)
             replaced_line_lengths.append(line_length)
 
@@ -420,8 +441,10 @@ def main():
             char_positions.append((current_pos, current_pos + length))
             current_pos += length
 
-        token_offsets = doc._.token_offsets
-        use_custom_offsets = token_offsets is not None and len(token_offsets) == len(doc)
+        token_offsets      = doc._.token_offsets
+        use_custom_offsets = (
+            token_offsets is not None and len(token_offsets) == len(doc)
+        )
 
         for i, token in enumerate(doc):
             if use_custom_offsets:
@@ -434,21 +457,29 @@ def main():
 
             for idx, (line_start, line_end) in enumerate(char_positions):
                 if line_start <= tok_start < line_end:
-                    token._.page_number = page_numbers.get(idx)
-                    token._.book_number = book_numbers.get(idx)
+                    token._.page_number      = page_numbers.get(idx)
+                    token._.book_number      = book_numbers.get(idx)
                     token._.paragraph_number = paragraph_numbers.get(idx)
                     if not is_at_line[idx]:
-                        token._.line_number = line_numbers.get(idx)
+                        token._.line_number  = line_numbers.get(idx)
                     break
 
         return doc
-        
-    nlp.add_pipe("attribute_tagging", before="tagger")
-    nlp.add_pipe("transformer", after="BERTtokenizer")
-    
-    # Process the text with Spacy
-    doc = nlp(text)
 
+    # Pipeline order at inference time:
+    #   BertTokenizer (with subword override)
+    #   → transformer
+    #   → mwt_detector
+    #   → mwt_annotator
+    #   → attribute_tagging
+    #   → tagger
+    #   → morphologizer
+    #   → senter
+    #   → sent_type_detector
+    nlp.add_pipe("attribute_tagging", before="tagger")
+
+    doc = nlp(text)
+    
     # ------------------------------------------------------------------
     # Print tokens with attributes
     # ------------------------------------------------------------------
